@@ -1,0 +1,14 @@
+{% extends 'layout.html' %}
+{% block content %}
+	<nav aria-label="breadcrumb">
+  		<ol class="breadcrumb">
+    		<li class="breadcrumb-item"><a href="{{url_for('mainhome')}}">Home</a></li>
+    		<li class="breadcrumb-item active" aria-current="page">Package Builder</li>
+    		<a href="{{url_for('pb_newbuild')}}" class="btn btn-success btn-sm ml-auto">Build New Package</a>
+  		</ol>
+	</nav>
+	{% if pb_pkg_count == 0 %}
+		<p>Empty Package Build History !!</p>
+	{% else %}
+	{% endif %}
+{% endblock content%}

@@ -1,0 +1,76 @@
+{%extends 'layout.html'%}
+{% block content %}
+	<nav aria-label="breadcrumb">
+  		<ol class="breadcrumb">
+    		<li class="breadcrumb-item"><a href="{{url_for('mainhome')}}">Home</a></li>
+    		<li class="breadcrumb-item active"><a href="{{url_for('pb_home')}}">Package Builder</a></li>
+    		<li class="breadcrumb-item active" aria-current="page">Build New Package</li>
+    		<a href="{{url_for('pb_reghostnode')}}" class="btn btn-success btn-sm ml-auto">Remote Host Node</a>
+  		</ol>
+	</nav>
+	<form method="POST" action="" >
+		{{form.hidden_tag()}}
+
+		<div class="form-group row">
+			<label class="col-sm-3 col-form-label">Package Build Id</label>
+			<div class="col-sm-7">
+				{{form.pb_pkgbuildid(class="form-control")}}
+			</div>
+		</div>
+
+		<div class="form-group row">
+			<label class="col-sm-3 col-form-label">Package Name</label>
+			<div class="col-sm-7">
+				{{form.pb_pkgname(class="form-control")}}
+				<small><code>Before package name give the prefix <strong>'apps:' ,'basic:' or 'core:'</strong></code></small>
+			</div>
+		</div>
+		<div class="form-group row">
+    		<label class="col-sm-3 col-form-label">Description</label>
+    		<div class="col-sm-7">
+    			{{form.pb_pkgdescription(class="form-control")}}
+    		</div>
+  		</div>
+
+  		<div class="form-group row">
+    		<label class="col-sm-3 col-form-label">Architecture</label>
+    		<div class="col-sm-7">
+      			{{form.pb_osarch(class="form-control")}}
+    		</div>
+  		</div>
+
+  		<div class="form-group row">
+    		<label class="col-sm-3 col-form-label">Package Structure Path</label>
+    		<div class="col-sm-7">
+      			{{form.pb_rawpkgpath(class="form-control",placeholder="/absolute/path/of_remote_host_machine/package_structure/")}}
+      			<small><code>Give absolute path for the package structure</code></small>
+    		</div>
+  		</div>
+  		 <hr class="my-2">
+  		<div class="form-group form-check">
+    		{{form.pb_needpatch(class="form-check-input",id="exampleCheck1")}}
+    		<label class="form-check-label" for="exampleCheck1">Prepare Patch</label>
+  		</div>
+  		<p>Remove Files and Packages
+  		<br><small>List all the Files and Packages to be removed. Use colon ' : ' as a seprator.<br>Prefixes : <b>boot-, core-, basic-, apps-, data- and root-</b>.</small></p>
+  		<div class="form-group row">
+    		<div class="col-sm-10 ">
+      			{{form.pb_removepkg(class="form-control",placeholder='Example : apps-abc.sq:boot-kernel')}}
+    		</div>
+  		</div>
+  		<p>Install Script 
+  		<br><small>Write your custom install script. Use semicolon ' ; ' after the end of each line.</small></p>
+  		<div class="form-group row">
+    		<div class="col-sm-10">
+      			{{form.pb_install_script(class="form-control",placeholder="All Packages and Files will be removed and added after reboot in initramfs. Here All the operations will be done before reboot of the OS.")}}
+    		</div>
+  		</div>
+  		<div class="border-top pt-2"></div>
+  		<div class="form-group row">
+    		<div class="col-sm-5">
+       			{{form.pb_submit(class="btn btn-primary")}}
+       			<a class="btn btn-warning" href="#" role="button">Cancel</a>
+    		</div>
+  		</div>	
+	</form>
+{% endblock content %}

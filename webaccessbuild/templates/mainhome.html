@@ -1,0 +1,33 @@
+{% extends 'layout.html' %}
+{%block content%}
+<div class="jumbotron jumbotron-fluid">
+  <div class="container">
+    <h1 class="display-5">One Web Access Build</h1>
+    <p class="lead">One web access point for building Packages,Firmware updates and Images.</p>
+  </div>
+</div>
+<div class="card-deck pt-3">
+	<div class="card text-white bg-secondary mb-3" >
+  		<div class="card-header text-center">Package Builder</div>
+  		<div class="card-body">
+    		<p class="card-text">Package builder will helps to build the various packages for 32-Bit and 64-Bit OS Architecture.It also gives the provision for building the patch for the same package.</p>
+  		</div>
+  		<div class="card-footer bg-secondary text-center "><a href="{{url_for('pb_home')}}" class="btn btn-primary">Home</a></div>
+  	</div>	
+  	<div class="card text-white bg-secondary mb-3" >
+  		<div class="card-header text-center">Firmware Update Builder</div>
+  		<div class="card-body">
+    		<p class="card-text">Firmware Update builder will helps to build the update patches for 32-Bit and 64-Bit OS Architecture.</p>
+  		</div>
+  		<div class="card-footer bg-secondary text-center "><a href="#" class="btn btn-primary">Home</a></div>
+	</div>
+	<div class="card text-white bg-secondary mb-3" >
+  		<div class="card-header text-center">Image Builder</div>
+  		<div class="card-body">
+    		<p class="card-text">Image Builder builds the GZ Image , Alpine CDF and ISO file.</p>
+  		</div>
+  		<div class="card-footer bg-secondary text-center "><a href="#" class="btn btn-primary">Home</a></div>
+	</div>
+
+</div>	
+{% endblock content%}
