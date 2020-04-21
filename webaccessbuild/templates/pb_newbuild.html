@@ -14,17 +14,28 @@
 		<div class="form-group row">
 			<label class="col-sm-3 col-form-label">Package Build Id</label>
 			<div class="col-sm-7">
-				{{form.pb_pkgbuildid(class="form-control")}}
+				{{form.pb_pkgbuildid(class="form-control",value=build)}}
 			</div>
 		</div>
 
 		<div class="form-group row">
 			<label class="col-sm-3 col-form-label">Package Name</label>
 			<div class="col-sm-7">
-				{{form.pb_pkgname(class="form-control")}}
-				<small><code>Before package name give the prefix <strong>'apps:' ,'basic:' or 'core:'</strong></code></small>
+				{% if form.pb_pkgname.errors %}
+					{{form.pb_pkgname(class="form-control is-invalid ")}}
+					<small><code>Before package name give the prefix <strong>'apps:' ,'basic:' or 'core:'</strong></code></small>
+					<div class="invalid-feedback">
+						{% for error in form.pb_pkgname.errors %}
+							<span>{{ error }}</span>
+						{% endfor %}
+					</div>
+				{% else %}
+					{{form.pb_pkgname(class="form-control")}}
+					<small><code>Before package name give the prefix <strong>'apps:' ,'basic:' or 'core:'</strong></code></small>
+				{% endif %}
 			</div>
 		</div>
+
 		<div class="form-group row">
     		<label class="col-sm-3 col-form-label">Description</label>
     		<div class="col-sm-7">

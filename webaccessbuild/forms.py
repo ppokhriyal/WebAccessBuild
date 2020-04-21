@@ -5,7 +5,7 @@ from flask_login import current_user
 from wtforms import StringField, PasswordField, SubmitField, BooleanField, TextAreaField, SelectField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, InputRequired,IPAddress
-from webaccessbuild.models import User
+from webaccessbuild.models import User,PB
 
 
 #Login Form
@@ -47,3 +47,13 @@ class PBBuildForm(FlaskForm):
 	pb_removepkg = TextAreaField('Remove Packages')
 	pb_install_script = TextAreaField('Install Script')
 	pb_submit = SubmitField('Build')
+
+
+	def validate_pb_pkgname(self,pb_pkgname):
+		l = ['apps:','basic:','core:']
+		pkg = pb_pkgname.data
+
+		if pkg[:5].casefold() not in l or pkg[:6].casefold() not in l:
+			print("ok")
+		else:
+			raise ValidationError('Plese enter the valid package name.')

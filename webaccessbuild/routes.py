@@ -3,37 +3,62 @@ from webaccessbuild import app, db, bcrypt
 from webaccessbuild.forms import LoginForm,RegistrationForm,PBBuildForm
 from flask_login import login_user, current_user, logout_user, login_required
 from webaccessbuild.models import User,PB
-
+import random
+import os
+import os.path
+from os import path
+import pathlib
+from pathlib import Path
+import subprocess
 
 #Main Home
 @app.route('/')
 def mainhome():
 
-	return render_template('mainhome.html',title='VXL WAB')
+    return render_template('mainhome.html',title='VXL WAB')
 
 #PB Home
 @app.route('/pb_home')
 def pb_home():
-	pb_pkg_count = len(db.session.query(PB).all())
-	pb_page = request.args.get('page',1,type=int)
-	pb_package = PB.query.order_by(PB.pb_date_posted.desc()).paginate(page=pb_page,per_page=4)
+    pb_pkg_count = len(db.session.query(PB).all())
+    pb_page = request.args.get('page',1,type=int)
+    pb_package = PB.query.order_by(PB.pb_date_posted.desc()).paginate(page=pb_page,per_page=4)
 
-	return render_template('pb_home.html',title='Package Builder',pb_pkg_count=pb_pkg_count,pb_package=pb_package)
+    return render_template('pb_home.html',title='Package Builder',pb_pkg_count=pb_pkg_count,pb_package=pb_package)
 
 #PB Add Host Node
 @app.route('/pb_reghostnode')
 @login_required
 def pb_reghostnode():
 
-	return render_template('pb_reghostnode.html',title='Register Host Node')
+    return render_template('pb_reghostnode.html',title='Register Host Node')
 
 
 #PB New PB
 @app.route('/pb_newbuild',methods=['GET','POST'])
 @login_required
 def pb_newbuild():
-	form = PBBuildForm()
-	return render_template('pb_newbuild.html',title='New Package Build',form=form)
+    form = PBBuildForm()
+    
+    #PB WorkArea
+    pb_pkgbuildid = random.randint(1111,9999)
+    pb_pkgbuildpath = '/var/www/html/Packages/'
+    
+    #Remove Builds which are not finished
+    if not len(os.listdir(pb_pkgbuildpath)) == 0:
+        for f in os.listdir(pb_pkgbuildpath):
+            file = pathlib.Path(pb_pkgbuildpath+f+"/finish.true")
+            cmd = "rm -Rf "+pb_pkgbuildpath+str(f)
+            proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            o,e = proc.communicate()
+
+    if form.validate_on_submit():
+        #Create working directory
+        os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data))
+
+        return redirect(url_for('pb_home'))
+
+    return render_template('pb_newbuild.html',title='New Package Build',form=form,build=pb_pkgbuildid)
 
 #User Login Page
 @app.route('/login',methods=['GET','POST'])
