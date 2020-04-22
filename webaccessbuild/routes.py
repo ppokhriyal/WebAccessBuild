@@ -1,8 +1,8 @@
 from flask import render_template, url_for, flash, redirect, request, abort, session
 from webaccessbuild import app, db, bcrypt
-from webaccessbuild.forms import LoginForm,RegistrationForm,PBBuildForm
+from webaccessbuild.forms import LoginForm,RegistrationForm,PBBuildForm,PBAddHostForm
 from flask_login import login_user, current_user, logout_user, login_required
-from webaccessbuild.models import User,PB
+from webaccessbuild.models import User,PB,RegisteredNode
 import random
 import os
 import os.path
@@ -10,6 +10,15 @@ from os import path
 import pathlib
 from pathlib import Path
 import subprocess
+import paramiko
+
+
+
+#Paramiko Global Connect
+global client
+client = paramiko.SSHClient()
+client.load_system_host_keys()
+client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
 
 #Main Home
 @app.route('/')
@@ -26,7 +35,39 @@ def pb_home():
 
     return render_template('pb_home.html',title='Package Builder',pb_pkg_count=pb_pkg_count,pb_package=pb_package)
 
-#PB Add Host Node
+
+#PB Add Remote Host Node
+@app.route('/pb_addremotenode',methods=['POST','GET'])
+@login_required
+def pb_addhostnode():
+    form = PBAddHostForm()
+
+    with open('/root/.ssh/id_rsa.pub',"r") as f:
+        publickey_content = f.read()
+
+    if form.validate_on_submit():
+        try:
+            client.connect(str(form.pb_remote_host_ip.data),timeout=3)
+            stdin, stdout, stderr = client.exec_command("hostname")
+            cmd_hostname = stdout.read()
+            print(cmd_hostname)
+
+            try:
+                reg_host = RegisteredNode(ipaddress=str(form.pb_remote_host_ip.data),hostname=cmd_hostname.decode('utf-8').rstrip('\n'))
+                db.session.commit(reg_host)
+                db.commit()
+            except Exception as ee:
+                flash(f"Remote Host Machine already Registered !",'info')
+
+        except Exception as ee:
+            flash(f"Connection Timeout",'danger')
+
+        flash(f"Remote Host Machine added successfully",'success')
+        return redirect(url_for('pb_reghostnode'))
+
+    return render_template('pb_addhost.html',title='Add Remote Node',form=form,publickey_content=publickey_content)
+
+#PB Remote Host Node
 @app.route('/pb_reghostnode')
 @login_required
 def pb_reghostnode():

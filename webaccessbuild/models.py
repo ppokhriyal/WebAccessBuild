@@ -16,6 +16,7 @@ class User(db.Model,UserMixin):
 	email = db.Column(db.String(120),unique=True,nullable=False)
 	password = db.Column(db.String(60),nullable=False)
 	password_decrypted = db.Column(db.String(60),nullable=False)
+	reg_host_node = db.relationship('RegisteredNode',backref='register_host_node',lazy=True,cascade='all,delete-orphan')
 	pb_info = db.relationship('PB',backref='pb_author',lazy=True,cascade='all,delete-orphan')
 
 	def __repr__(self):
@@ -34,3 +35,14 @@ class PB(db.Model):
 
 	def __repr__(self):
 		return f"Pkgdetails('{self.pb_buildid}','{self.pb_pkgname}','{self.pb_description}')"
+
+
+class RegisteredNode(db.Model):
+	id = db.Column(db.Integer,primary_key=True)
+	ipaddress = db.Column(db.String(20),unique=True,nullable=False)
+	hostname = db.Column(db.String(20),nullable=False)
+	user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+	def __repr__(self):
+
+		return f"{self.ipaddress}"

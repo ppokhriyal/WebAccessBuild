@@ -1,0 +1,40 @@
+{% extends 'layout.html' %}
+{% block content %}
+	<nav aria-label="breadcrumb">
+  		<ol class="breadcrumb">
+    		<li class="breadcrumb-item"><a href="{{url_for('mainhome')}}">Home</a></li>
+    		<li class="breadcrumb-item active"><a href="{{url_for('pb_home')}}">Package Builder</a></li>
+    		<li class="breadcrumb-item active"><a href="{{url_for('pb_newbuild')}}">Build New Package</a></li>
+    		<li class="breadcrumb-item active"><a href="{{url_for('pb_reghostnode')}}">Registered Host Nodes</a></li>
+    		<li class="breadcrumb-item active" aria-current="page">Add Host Node</li>
+    		
+  		</ol>
+	</nav>
+	<p>Master Public Key<br>
+	
+	<div class="alert alert-dark bs-callout" role="alert">
+		<pre>{{publickey_content | safe}}</pre>
+	</div>
+	<small>Make sure <mark>sshd daemon</mark> is running on the remote machine.<br>Copy the above public key to the remote machine, which you want to register.<br><code>Example : Location will be <mark>/root/.ssh/authorized_keys</mark>,authorized_keys file contents the public key content.</code></small>
+	<form method='POST' action="" class="pt-3">
+		{{form.hidden_tag()}}
+
+		<div class="form-group">
+			<label>Remote Host IP Address</label>
+			{% if form.pb_remote_host_ip.errors %}
+				{{ form.pb_remote_host_ip(class="form-control is-invalid form-control-sm")}}
+				<div class="invalid-feedback">
+					{% for error in form.pb_remote_host_ip.errors %}
+						<span>{{ error }}</span>
+					{% endfor %}
+				</div>
+			{% else %}
+				{{ form.pb_remote_host_ip(class="form-control form-control-sm")}}
+			{% endif %}	
+		</div>
+		<div class="form-group">
+			{{form.pb_submit(class="btn btn-sm btn-primary")}}
+			<a class="btn btn-warning btn-sm" href="{{url_for('pb_reghostnode')}}">Cancel</a>
+		</div>
+	</form>
+{% endblock content %}

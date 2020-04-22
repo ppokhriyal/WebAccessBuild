@@ -57,3 +57,8 @@ class PBBuildForm(FlaskForm):
 			print("ok")
 		else:
 			raise ValidationError('Plese enter the valid package name.')
+
+#PB Add Host
+class PBAddHostForm(FlaskForm):
+	pb_remote_host_ip = StringField('Remote Host IP Address',validators=[DataRequired(),IPAddress(message="Please Give Valid IP-Address")])
+	pb_submit = SubmitField('Register')
