@@ -20,7 +20,7 @@ class User(db.Model,UserMixin):
 	pb_info = db.relationship('PB',backref='pb_author',lazy=True,cascade='all,delete-orphan')
 
 	def __repr__(self):
-		return f"User('{self.username}','{self.email}')"
+		return f"User('{self.username}','{self.email}','{self.reg_host_node}')"
 
 
 class PB(db.Model):

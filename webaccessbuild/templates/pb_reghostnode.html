@@ -10,4 +10,27 @@
     		
   		</ol>
 	</nav>
+
+  {% if regs_host_count != 0 %}
+    {%set host_status = namespace(value=0) %}
+      {% for i in regs_hosts.items %}
+        <div class="card">
+          <div class="card-body bg-light">
+            <div class="d-inline p-2 bg-primary text-white">IPAddress</div>
+            <div class="d-inline p-2 bg-dark text-white">{{i.ipaddress}}</div>
+            <div class="d-inline p-2 bg-primary text-white">Hostname</div>
+            <div class="d-inline p-2 bg-dark text-white">{{i.hostname}}</div>
+            <div class="d-inline p-2 ml-1 bg-primary text-white">Status</div>
+            {%if host_ip_status[host_status.value] == 'Running'%}
+              <div class="d-inline p-2 bg-dark text-white"><i class="fas fa-thumbs-up"></i> Running</div>
+            {% else %}
+              <div class="d-inline p-2 bg-dark text-white"><i class="fas fa-thumbs-down"></i> Down</div>
+            {% endif %}
+            {% if i.register_host_node == current_user %}
+              <a class="btn-sm btn-danger float-right text-decoration-none " href="#" role="button">Remove</a>
+          {% endif %}  
+        </div>
+      </div>
+      {% endfor %}
+  {% endif %}
 {% endblock content %}

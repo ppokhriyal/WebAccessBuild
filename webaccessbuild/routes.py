@@ -53,10 +53,11 @@ def pb_addhostnode():
             print(cmd_hostname)
 
             try:
-                reg_host = RegisteredNode(ipaddress=str(form.pb_remote_host_ip.data),hostname=cmd_hostname.decode('utf-8').rstrip('\n'))
-                db.session.commit(reg_host)
-                db.commit()
+                reg_host = RegisteredNode(ipaddress=str(form.pb_remote_host_ip.data),hostname=cmd_hostname.decode('utf-8').rstrip('\n'),register_host_node=current_user)
+                db.session.add(reg_host)
+                db.session.commit()
             except Exception as ee:
+                print(ee)
                 flash(f"Remote Host Machine already Registered !",'info')
 
         except Exception as ee:
@@ -71,8 +72,23 @@ def pb_addhostnode():
 @app.route('/pb_reghostnode')
 @login_required
 def pb_reghostnode():
+    page = request.args.get('page',1,type=int)
+    regs_host_count = db.session.query(RegisteredNode).count()
+    regs_hosts = RegisteredNode.query.paginate(page=page,per_page=4)
+    #Check the status of the Remote Host machines
+    host_ip_status = []
+    for i in db.session.query(RegisteredNode).all():
+        try:
+            client.connect(str(i),timeout=2)
+            stdin, stdout, stderr = client.exec_command("hostname")
+            if stdout.channel.recv_exit_status() != 0:
+                host_ip_status.append('Down')
+            else:
+                host_ip_status.append('Running')
+        except Exception as ee:
+            print(ee)
 
-    return render_template('pb_reghostnode.html',title='Register Host Node')
+    return render_template('pb_reghostnode.html',title='Register Host Node',regs_host_count=regs_host_count,regs_hosts=regs_hosts,host_ip_status=host_ip_status)
 
 
 #PB New PB
@@ -94,9 +110,40 @@ def pb_newbuild():
             o,e = proc.communicate()
 
     if form.validate_on_submit():
+
         #Create working directory
         os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data))
+        os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/'+str(form.pb_osarch.data)+'/'+str(form.pb_pkgname.data).casefold().split(':')[0])
 
+        #Check Remote Host is Still Alive
+        try:
+            client.connect(str(form.remote_host_ip.data),timeout=10)
+            stdin,stdout,stderr = client.exec_command("ls "+form.pb_rawpkgpath.data)
+            if stdout.channel.recv_exit_status() != 0:
+                flash(f"Please Check the remote host path",'danger')
+        except Exception as ee:
+            flash(f"Connection Timeout.Check Remote Host",'danger')
+
+        #Create the Squashfs File
+        stdin,stdout,stderr = client.exec_command("mksquashfs "+form.pb_rawpkgpath.data+" "+form.pb_rawpkgpath.data+"/"+str(form.pb_pkgname.data).casefold().split(':')[1]+".sq"+" "+"-e "+str(form.pb_pkgname.data).casefold().split(':')[1]+".sq")
+        #Download the newly created squashfs file
+        ftp_client = client.open_sftp()
+        ftp_client.get(form.pb_rawpkgpath.data+"/"+str(form.pb_pkgname.data).casefold().split(':')[1]+".sq",pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/'+str(form.pb_osarch.data)+'/'+str(form.pb_pkgname.data).casefold().split(':')[0]+'/'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq')
+
+        #Get MD5SUM
+        cmd_md5sum = "md5sum "+pb_pkgbuildpath+'/'+str(form.pb_pkgbuildid.data)+'/'+str(form.pb_osarch.data)+'/'+str(form.pb_pkgname.data).casefold().split(':')[0]+'/'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq'
+        proc = subprocess.Popen(cmd_md5sum,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        o,e = proc.communicate()
+
+        with open(pb_pkgbuildpath+'/'+str(form.pb_pkgbuildid.data)+'/MD5SUM',"w") as f:
+            f.write(o.decode('utf-8').split(' ')[0])
+            f.write("\n")
+
+        #Update the Database
+        pb_update = PB(pb_buildid=str(form.pb_pkgbuildid.data),pb_pkgname=str(form.pb_pkgname.data).casefold().split(':')[1],pb_description=form.pb_pkgdescription.data,pb_os_arch=form.pb_osarch.data,pb_author=current_user)
+        db.session.add(pb_update)
+        db.session.commit()
+        
         return redirect(url_for('pb_home'))
 
     return render_template('pb_newbuild.html',title='New Package Build',form=form,build=pb_pkgbuildid)
