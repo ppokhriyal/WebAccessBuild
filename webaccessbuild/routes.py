@@ -11,7 +11,7 @@ import pathlib
 from pathlib import Path
 import subprocess
 import paramiko
-
+import tarfile
 
 
 #Paramiko Global Connect
@@ -138,36 +138,91 @@ def pb_newbuild():
         #Remove sq after download
         stdin,stdout,stderr = client.exec_command("rm -rf  "+form.pb_rawpkgpath.data+"/"+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq')
 
-        if form.pb_needpatch.data != True:
-            #Update the Database
-            pb_update = PB(pb_buildid=str(form.pb_pkgbuildid.data),pb_pkgname=str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq',pb_description=form.pb_pkgdescription.data,pb_os_arch=form.pb_osarch.data,pb_md5sum_pkg=o.decode('utf-8').split(' ')[0],pb_author=current_user)
-            db.session.add(pb_update)
-            db.session.commit()
-        
-            return redirect(url_for('pb_home'))
-        else:
-            
-            #Create Firmware Patch work directory
-            os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update')
+        #Check Patch check box is checked or not
+        if form.pb_needpatch.data == True:
+            #Check for Current patch or Legacy patch format
 
-            #Check if it is a Legacy Patch
-            if form.pb_patchlegacy.data != True:
-               os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update/root/firmware_update/add-pkg')
-               os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update/root/firmware_update/delete-pkg')
-            else:
-                os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update/root/')
-                os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update/sda1/data/firmware_update/add-pkg')
-                os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update/sda1/data/firmware_update/delete-pkg')
+            if form.pb_patchtype.data == "Current Patch":
+                #Create current patch working area
+                os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/add-pkg')
+                #copy the new build package
+                cmd = "cp -pa "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/'+str(form.pb_osarch.data)+'/'+str(form.pb_pkgname.data).casefold().split(':')[0]+'/'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq'+" "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/add-pkg/'+str(form.pb_pkgname.data).casefold().split(':')[0]+':'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq'
+                proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o,e = proc.communicate()
 
-            #Check if remove package list and install script is empty    
-            if len(form.pb_removepkg.data) == 0 and len(form.pb_install_script.data) == 0:
-                flash(f"Invalid Patch format")
-                return redirect(url_for('pb_home'))
+                #Check for remove packages and files
+                if len(form.pb_removepkg.data) != 0:
 
+                    remove_pkgs = form.pb_removepkg.data.split(':')
+
+                    try:
+                        for i in remove_pkgs:
+                            #Check for prefix
+                            prefix = i.split('-',1)
+
+                            if prefix[0].casefold() not in ['core','basic','apps']:
+                                flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
+                                return redirect(url_for('pb_home'))
+
+                            os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg')    
+
+                            if prefix[0].casefold() == 'core':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg/core:'+prefix[1]).touch()
+
+                            if prefix[0].casefold() == 'basic':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg/basic:'+prefix[1]).touch()
+
+                            if prefix[0].casefold() == 'apps':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg/apps:'+prefix[1]).touch()
+
+                    except Exception as ee:
+                        print(ee)
+
+                #Check if Install script is empty
+                if len(form.pb_install_script.data) != 0:
+
+                    os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root')
+
+                    install_script = form.pb_install_script.data.split(' ')
+                    f = open(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/install',"a+")
+                    f.write("#!/bin/bash\n")
+                    for i in " ".join(install_script):
+                        f.write(i)
+
+                    f.close()
+
+                    #Create findminmax.sh
+                    with open(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/findminmax.sh',"a") as f:
+                        f.write('#!/bin/bash')
+                        f.write('\n')
+                        f.write('mount -o remount,rw /sda1')
+                        f.write('\n')
+                        f.write('exit 0')
+
+                    #Remove ^M from install script
+                    subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/install"],shell=True)
+                    subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/findminmax.sh"],shell=True)
+
+                #CHMOD
+                subprocess.call(["chmod -R 755 "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)],shell=True)
+
+                #Build Final Patch Tar
+                patch_name = form.pb_pkgname.data.split(':')[1]+'.tar.bz2'
+                tar_file_path = pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/'+patch_name
+                tar = tarfile.open(tar_file_path,mode='w:bz2')
+                os.chdir(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/')
+                tar.add(".")
+                tar.close()
                 
 
-            flash(f"Package Build Successfully",'success')
-            return redirect(url_for('pb_home'))
+
+
+            else:
+                #Legacy patch selected
+                os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/add-pkg')
+        else:
+            #Patch Checkbox is not checked
+            pass
 
 
     return render_template('pb_newbuild.html',title='New Package Build',form=form,build=pb_pkgbuildid)

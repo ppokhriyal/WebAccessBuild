@@ -45,7 +45,7 @@ class PBBuildForm(FlaskForm):
 	remote_host_ip = QuerySelectField(query_factory=lambda:RegisteredNode.query.all())
 	pb_rawpkgpath = StringField('Package Structure',validators=[DataRequired()])
 	pb_needpatch = BooleanField('Required Patch')
-	pb_patchlegacy = BooleanField('Legacy Patch')
+	pb_patchtype = SelectField('Patch Format',choices=[('Current Patch','Current Patch'),('Legacy Patch','Legacy Patch')])
 	pb_removepkg = TextAreaField('Remove Packages')
 	pb_install_script = TextAreaField('Install Script')
 	pb_submit = SubmitField('Build')

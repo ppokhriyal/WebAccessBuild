@@ -69,10 +69,13 @@
     		{{form.pb_needpatch(class="form-check-input",id="exampleCheck1")}}
     		<label class="form-check-label">Prepare Patch</label>
   		</div>
-      <div class="form-group form-check">
-        {{form.pb_patchlegacy(class="form-check-input",id="exampleCheck1")}}
-        <label class="form-check-label">Legacy Patch</label>
-        <small>[ Legacy patch is valid for Build 45 and below images. ]</small>
+      <p>Patch Format
+      <br><small><strong>Current Patch is valid for build 46 and above images.</strong></small>
+      <br><small><strong>Legacy Patch is valid for build 45 and below images.</strong></small></p>
+      <div class="form-group row">
+        <div class="col-sm-3">
+            {{form.pb_patchtype(class="form-control")}}
+        </div>
       </div>
 
   		<p>Remove Files and Packages
