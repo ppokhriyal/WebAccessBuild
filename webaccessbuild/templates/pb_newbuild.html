@@ -69,6 +69,12 @@
     		{{form.pb_needpatch(class="form-check-input",id="exampleCheck1")}}
     		<label class="form-check-label">Prepare Patch</label>
   		</div>
+      <div class="form-group form-check">
+        {{form.pb_patchlegacy(class="form-check-input",id="exampleCheck1")}}
+        <label class="form-check-label">Legacy Patch</label>
+        <small>[ Legacy patch is valid for Build 45 and below images. ]</small>
+      </div>
+
   		<p>Remove Files and Packages
   		<br><small>List all the Files and Packages to be removed. Use colon ' : ' as a seprator.<br>Prefixes : <b>boot-, core-, basic-, apps-, data- and root-</b>.</small></p>
   		<div class="form-group row">
@@ -87,7 +93,7 @@
   		<div class="form-group row">
     		<div class="col-sm-5">
        			{{form.pb_submit(class="btn btn-primary")}}
-       			<a class="btn btn-warning" href="#" role="button">Cancel</a>
+       			<a class="btn btn-warning" href="{{url_for('pb_home')}}" role="button">Cancel</a>
     		</div>
   		</div>	
 	</form>

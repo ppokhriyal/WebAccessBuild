@@ -135,16 +135,40 @@ def pb_newbuild():
         proc = subprocess.Popen(cmd_md5sum,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         o,e = proc.communicate()
 
-        with open(pb_pkgbuildpath+'/'+str(form.pb_pkgbuildid.data)+'/MD5SUM',"w") as f:
-            f.write(o.decode('utf-8').split(' ')[0])
-            f.write("\n")
+        #Remove sq after download
+        stdin,stdout,stderr = client.exec_command("rm -rf  "+form.pb_rawpkgpath.data+"/"+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq')
 
-        #Update the Database
-        pb_update = PB(pb_buildid=str(form.pb_pkgbuildid.data),pb_pkgname=str(form.pb_pkgname.data).casefold().split(':')[1],pb_description=form.pb_pkgdescription.data,pb_os_arch=form.pb_osarch.data,pb_author=current_user)
-        db.session.add(pb_update)
-        db.session.commit()
+        if form.pb_needpatch.data != True:
+            #Update the Database
+            pb_update = PB(pb_buildid=str(form.pb_pkgbuildid.data),pb_pkgname=str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq',pb_description=form.pb_pkgdescription.data,pb_os_arch=form.pb_osarch.data,pb_md5sum_pkg=o.decode('utf-8').split(' ')[0],pb_author=current_user)
+            db.session.add(pb_update)
+            db.session.commit()
         
-        return redirect(url_for('pb_home'))
+            return redirect(url_for('pb_home'))
+        else:
+            
+            #Create Firmware Patch work directory
+            os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update')
+
+            #Check if it is a Legacy Patch
+            if form.pb_patchlegacy.data != True:
+               os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update/root/firmware_update/add-pkg')
+               os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update/root/firmware_update/delete-pkg')
+            else:
+                os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update/root/')
+                os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update/sda1/data/firmware_update/add-pkg')
+                os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Firmware_Update/sda1/data/firmware_update/delete-pkg')
+
+            #Check if remove package list and install script is empty    
+            if len(form.pb_removepkg.data) == 0 and len(form.pb_install_script.data) == 0:
+                flash(f"Invalid Patch format")
+                return redirect(url_for('pb_home'))
+
+                
+
+            flash(f"Package Build Successfully",'success')
+            return redirect(url_for('pb_home'))
+
 
     return render_template('pb_newbuild.html',title='New Package Build',form=form,build=pb_pkgbuildid)
 

@@ -31,6 +31,8 @@ class PB(db.Model):
 	pb_date_posted = db.Column(db.DateTime(),nullable=False,default=datetime.now)
 	pb_description = db.Column(db.Text,nullable=False)
 	pb_os_arch = db.Column(db.Text,nullable=False)
+	pb_md5sum_pkg = db.Column(db.String(50),nullable=False)
+	pb_md5sum_patch = db.Column(db.String(50))
 	user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 	def __repr__(self):
