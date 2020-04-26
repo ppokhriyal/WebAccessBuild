@@ -77,7 +77,12 @@
             {{form.pb_patchtype(class="form-control")}}
         </div>
       </div>
-
+      <div class="form-group row">
+        <label class="col-sm-3 col-form-label">Patch Name</label>
+        <div class="col-sm-7">
+          {{form.pb_patchname(class="form-control")}}
+        </div>
+      </div>
   		<p>Remove Files and Packages
   		<br><small>List all the Files and Packages to be removed. Use colon ' : ' as a seprator.<br>Prefixes : <b>boot-, core-, basic-, apps-, data- and root-</b>.</small></p>
   		<div class="form-group row">
@@ -86,10 +91,10 @@
     		</div>
   		</div>
   		<p>Install Script 
-  		<br><small>Write your custom install script. Use semicolon ' ; ' after the end of each line.</small></p>
+  		<br><small>Write your custom install script.</small></p>
   		<div class="form-group row">
     		<div class="col-sm-10">
-      			{{form.pb_install_script(class="form-control",placeholder="All Packages and Files will be removed and added after reboot in initramfs. Here All the operations will be done before reboot of the OS.")}}
+      			{{form.pb_install_script(class="form-control")}}
     		</div>
   		</div>
   		<div class="border-top pt-2"></div>

@@ -28,6 +28,7 @@ class PB(db.Model):
 	id = db.Column(db.Integer,primary_key=True)
 	pb_buildid = db.Column(db.Integer,unique=True,nullable=False)
 	pb_pkgname = db.Column(db.String(60),nullable=False)
+	pb_patchname = db.Column(db.String(60))
 	pb_date_posted = db.Column(db.DateTime(),nullable=False,default=datetime.now)
 	pb_description = db.Column(db.Text,nullable=False)
 	pb_os_arch = db.Column(db.Text,nullable=False)

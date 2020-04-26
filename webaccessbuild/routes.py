@@ -33,7 +33,7 @@ def pb_home():
     pb_page = request.args.get('page',1,type=int)
     pb_package = PB.query.order_by(PB.pb_date_posted.desc()).paginate(page=pb_page,per_page=4)
 
-    return render_template('pb_home.html',title='Package Builder',pb_pkg_count=pb_pkg_count,pb_package=pb_package)
+    return render_template('pb_home.html',title='Package Builder',pb_pkg_count=pb_pkg_count,pb_package=pb_package,pb_page=pb_page)
 
 
 #PB Add Remote Host Node
@@ -134,6 +134,7 @@ def pb_newbuild():
         cmd_md5sum = "md5sum "+pb_pkgbuildpath+'/'+str(form.pb_pkgbuildid.data)+'/'+str(form.pb_osarch.data)+'/'+str(form.pb_pkgname.data).casefold().split(':')[0]+'/'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq'
         proc = subprocess.Popen(cmd_md5sum,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         o,e = proc.communicate()
+        pb_pkg_md5sum = o.decode('utf-8').split(' ')[0]
 
         #Remove sq after download
         stdin,stdout,stderr = client.exec_command("rm -rf  "+form.pb_rawpkgpath.data+"/"+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq')
@@ -207,22 +208,123 @@ def pb_newbuild():
                 subprocess.call(["chmod -R 755 "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)],shell=True)
 
                 #Build Final Patch Tar
-                patch_name = form.pb_pkgname.data.split(':')[1]+'.tar.bz2'
+                patch_name = form.pb_patchname.data.replace(' ','_')+'.tar.bz2'
                 tar_file_path = pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/'+patch_name
                 tar = tarfile.open(tar_file_path,mode='w:bz2')
                 os.chdir(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/')
                 tar.add(".")
                 tar.close()
                 
+                #Damage Patch
+                cmd = "damage corrupt "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/'+patch_name+" 1"
+                proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o,e = proc.communicate()
 
+                #MD5SUM of Patch
+                cmd = "md5sum "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/'+patch_name
+                proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o,e = proc.communicate()
+                pb_patch_md5sum = o.decode('utf-8').split(' ')[0]
 
+                #Update DataBase
+                update_db = PB(pb_buildid=form.pb_pkgbuildid.data,pb_pkgname=form.pb_pkgname.data.split(':')[1],pb_patchname=form.pb_patchname.data.replace(' ','_'),pb_description=form.pb_pkgdescription.data,
+                    pb_os_arch=form.pb_osarch.data,pb_md5sum_pkg=pb_pkg_md5sum,pb_md5sum_patch=pb_patch_md5sum,pb_author=current_user)
+                db.session.add(update_db)
+                db.session.commit()
 
             else:
                 #Legacy patch selected
                 os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/add-pkg')
+                #copy the new build package
+                cmd = "cp -pa "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/'+str(form.pb_osarch.data)+'/'+str(form.pb_pkgname.data).casefold().split(':')[0]+'/'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq'+" "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/add-pkg/'+str(form.pb_pkgname.data).casefold().split(':')[0]+':'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq'
+                proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o,e = proc.communicate()
+                #Check for remove packages and files
+                if len(form.pb_removepkg.data) != 0:
+                    remove_pkgs = form.pb_removepkg.data.split(':')
+                    try:
+                        for i in remove_pkgs:
+                            #Check for prefix
+                            prefix = i.split('-',1)
+                            if prefix[0].casefold() not in ['core','basic','apps']:
+                                flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
+                                return redirect(url_for('pb_home'))
+
+                            os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg')    
+
+                            if prefix[0].casefold() == 'core':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg/core:'+prefix[1]).touch()
+
+                            if prefix[0].casefold() == 'basic':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg/basic:'+prefix[1]).touch()
+
+                            if prefix[0].casefold() == 'apps':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg/apps:'+prefix[1]).touch()
+
+                    except Exception as ee:
+                        print(ee)
+
+                #Check if Install script is empty
+                if len(form.pb_install_script.data) != 0:
+
+                    install_script = form.pb_install_script.data.split(' ')
+                    f = open(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/install',"a+")
+                    f.write("#!/bin/bash\n")
+                    for i in " ".join(install_script):
+                        f.write(i)
+
+                    f.close()
+
+                    #Create findminmax.sh
+                    with open(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/findminmax.sh',"a") as f:
+                        f.write('#!/bin/bash')
+                        f.write('\n')
+                        f.write('mount -o remount,rw /sda1')
+                        f.write('\n')
+                        f.write('exit 0')
+
+                    #Remove ^M from install script
+                    subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/install"],shell=True)
+                    subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/findminmax.sh"],shell=True)
+
+                #CHMOD
+                subprocess.call(["chmod -R 755 "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)],shell=True)
+
+                #Build Final Patch Tar
+                patch_name = form.pb_patchname.data.replace(' ','_')+'.tar.bz2'
+                tar_file_path = pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/'+patch_name
+                tar = tarfile.open(tar_file_path,mode='w:bz2')
+                os.chdir(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/')
+                tar.add(".")
+                tar.close()
+                
+                #Damage Patch
+                cmd = "damage corrupt "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/'+patch_name+" 1"
+                proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o,e = proc.communicate()
+
+                #MD5SUM of Patch
+                cmd = "md5sum "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/'+patch_name
+                proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o,e = proc.communicate()
+                pb_patch_md5sum = o.decode('utf-8').split(' ')[0]
+
+                #Update DataBase
+                update_db = PB(pb_buildid=form.pb_pkgbuildid.data,pb_pkgname=form.pb_pkgname.data.split(':')[1],pb_patchname=form.pb_patchname.data.replace(' ','_'),pb_description=form.pb_pkgdescription.data,
+                    pb_os_arch=form.pb_osarch.data,pb_md5sum_pkg=pb_pkg_md5sum,pb_md5sum_patch=pb_patch_md5sum,pb_author=current_user)
+                db.session.add(update_db)
+                db.session.commit()
+        
+    
         else:
             #Patch Checkbox is not checked
-            pass
+            subprocess.call(["chmod -R 755 "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)],shell=True)
+            
+            #Update DataBase
+            update_db = PB(pb_buildid=form.pb_pkgbuildid.data,pb_pkgname=form.pb_pkgname.data.split(':')[1],pb_patchname='None',pb_description=form.pb_pkgdescription.data,
+                    pb_os_arch=form.pb_osarch.data,pb_md5sum_pkg=pb_pkg_md5sum,pb_md5sum_patch='None',pb_author=current_user)
+            db.session.add(update_db)
+            db.session.commit()
 
 
     return render_template('pb_newbuild.html',title='New Package Build',form=form,build=pb_pkgbuildid)

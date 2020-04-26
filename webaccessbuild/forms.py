@@ -46,6 +46,7 @@ class PBBuildForm(FlaskForm):
 	pb_rawpkgpath = StringField('Package Structure',validators=[DataRequired()])
 	pb_needpatch = BooleanField('Required Patch')
 	pb_patchtype = SelectField('Patch Format',choices=[('Current Patch','Current Patch'),('Legacy Patch','Legacy Patch')])
+	pb_patchname = StringField('Patch Name')
 	pb_removepkg = TextAreaField('Remove Packages')
 	pb_install_script = TextAreaField('Install Script')
 	pb_submit = SubmitField('Build')
