@@ -24,7 +24,8 @@ client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
 @app.route('/')
 def mainhome():
 
-    return render_template('mainhome.html',title='VXL WAB')
+    pb_count = len(db.session.query(PB).all())
+    return render_template('mainhome.html',title='VXL WAB',pb_count=pb_count)
 
 #PB Home
 @app.route('/pb_home')
@@ -146,6 +147,20 @@ def pb_newbuild():
             if form.pb_patchtype.data == "Current Patch":
                 #Create current patch working area
                 os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/add-pkg')
+                os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root')
+
+                #Create default findminmax script
+                #Create findminmax.sh
+                with open(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/findminmax.sh',"a") as f:
+                    f.write('#!/bin/bash')
+                    f.write('\n')
+                    f.write('mount -o remount,rw /sda1')
+                    f.write('\n')
+                    f.write('exit 0')
+
+                #Remove ^M from install script
+                subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/findminmax.sh"],shell=True)
+
                 #copy the new build package
                 cmd = "cp -pa "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/'+str(form.pb_osarch.data)+'/'+str(form.pb_pkgname.data).casefold().split(':')[0]+'/'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq'+" "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/add-pkg/'+str(form.pb_pkgname.data).casefold().split(':')[0]+':'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq'
                 proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -182,8 +197,6 @@ def pb_newbuild():
                 #Check if Install script is empty
                 if len(form.pb_install_script.data) != 0:
 
-                    os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root')
-
                     install_script = form.pb_install_script.data.split(' ')
                     f = open(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/install',"a+")
                     f.write("#!/bin/bash\n")
@@ -192,17 +205,8 @@ def pb_newbuild():
 
                     f.close()
 
-                    #Create findminmax.sh
-                    with open(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/findminmax.sh',"a") as f:
-                        f.write('#!/bin/bash')
-                        f.write('\n')
-                        f.write('mount -o remount,rw /sda1')
-                        f.write('\n')
-                        f.write('exit 0')
-
                     #Remove ^M from install script
                     subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/install"],shell=True)
-                    subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/findminmax.sh"],shell=True)
 
                 #CHMOD
                 subprocess.call(["chmod -R 755 "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)],shell=True)
@@ -231,6 +235,10 @@ def pb_newbuild():
                     pb_os_arch=form.pb_osarch.data,pb_md5sum_pkg=pb_pkg_md5sum,pb_md5sum_patch=pb_patch_md5sum,pb_author=current_user)
                 db.session.add(update_db)
                 db.session.commit()
+
+                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/"+"finish.true").touch()
+                flash(f"Package {form.pb_pkgname.data} created successfully",'success')
+                return redirect(url_for('pb_home'))
 
             else:
                 #Legacy patch selected
@@ -285,7 +293,7 @@ def pb_newbuild():
 
                     #Remove ^M from install script
                     subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/install"],shell=True)
-                    subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/findminmax.sh"],shell=True)
+                    
 
                 #CHMOD
                 subprocess.call(["chmod -R 755 "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)],shell=True)
@@ -314,7 +322,10 @@ def pb_newbuild():
                     pb_os_arch=form.pb_osarch.data,pb_md5sum_pkg=pb_pkg_md5sum,pb_md5sum_patch=pb_patch_md5sum,pb_author=current_user)
                 db.session.add(update_db)
                 db.session.commit()
-        
+
+                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/"+"finish.true").touch()
+                flash(f"Package {form.pb_pkgname.data} created successfully",'success')
+                return redirect(url_for('pb_home'))
     
         else:
             #Patch Checkbox is not checked
@@ -326,8 +337,31 @@ def pb_newbuild():
             db.session.add(update_db)
             db.session.commit()
 
+            Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/"+"finish.true").touch()
+            flash(f"Package {form.pb_pkgname.data} created successfully",'success')
+            return redirect(url_for('pb_home'))
 
     return render_template('pb_newbuild.html',title='New Package Build',form=form,build=pb_pkgbuildid)
+
+#Remove Packages
+@app.route('/pb_home/pb_delete/<int:pb_id>')
+@login_required
+def pb_delete(pb_id):
+
+    pb_info = PB.query.get_or_404(pb_id)
+
+    if pb_info.pb_author != current_user:
+        abort(403)
+
+    db.session.delete(pb_info)
+    db.session.commit()
+
+    cmd = "rm -Rf /var/www/html/Packages/"+str(pb_info.pb_buildid)
+    proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    o,e = proc.communicate()
+    flash('Package Build information deleted successfully','success')
+    return redirect(url_for('pb_home'))
+
 
 #User Login Page
 @app.route('/login',methods=['GET','POST'])

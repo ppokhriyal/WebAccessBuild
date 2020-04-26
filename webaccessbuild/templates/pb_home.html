@@ -22,13 +22,17 @@
     				<p class="media-body pt-1 pb-2 small lh-125 border-bottom border-gray ">{{i.pb_description | safe}}</p>
     				<small>
     					<i class="fas fa-sitemap"></i> Package OS Architecture is <mark>{{i.pb_os_arch}}</mark> <br>
-    					<i class="fas fa-cloud-download-alt"></i> Download URL available <a>'Here'</a><br>
+    					<i class="fas fa-cloud-download-alt"></i> Download URL available <a href="#">now</a><br>
     					<i class="fas fa-check-circle"></i> Package {{i.pb_pkgname}}.sq md5sum is <mark>{{i.pb_md5sum_pkg}}</mark><br>
-    					<i class="fas fa-check-circle"></i> Patch {{i.pb_patchname}}.tar.bz2 md5sum is <mark>{{i.pb_md5sum_patch}}</mark><br>
+              {% if i.pb_patchname == 'None' %}
+    					 <i class="fas fa-check-circle"></i> Patch not available <br>
+              {% else %}
+                <i class="fas fa-check-circle"></i> Patch {{i.pb_patchname}}.tar.bz2 md5sum is <mark>{{i.pb_md5sum_patch}}</mark><br>
+              {% endif %} 
     				</small>
     				<div class="border-top pt-1 mb-2"></div>
     				{% if i.pb_author == current_user %}
-    					<a class="badge badge-danger float-right pb-1" href="#" role="button">Remove</a>
+    					<a class="badge badge-danger float-right pb-1" href="{{url_for('pb_delete',pb_id=i.id)}}" role="button">Remove</a>
     				{% endif %}
   				</div>
 			</div>

@@ -69,20 +69,21 @@
     		{{form.pb_needpatch(class="form-check-input",id="exampleCheck1")}}
     		<label class="form-check-label">Prepare Patch</label>
   		</div>
-      <p>Patch Format
-      <br><small><strong>Current Patch is valid for build 46 and above images.</strong></small>
-      <br><small><strong>Legacy Patch is valid for build 45 and below images.</strong></small></p>
-      <div class="form-group row">
-        <div class="col-sm-3">
-            {{form.pb_patchtype(class="form-control")}}
-        </div>
-      </div>
       <div class="form-group row">
         <label class="col-sm-3 col-form-label">Patch Name</label>
         <div class="col-sm-7">
           {{form.pb_patchname(class="form-control")}}
         </div>
       </div>
+      <div class="form-group row">
+        <label class="col-sm-3 col-form-label">Patch Mode</label>
+        <div class="col-sm-7">
+            {{form.pb_patchtype(class="form-control")}}
+            <small><code><strong>Current Patch </strong> is available for 005 Build image and above</code></small><br>
+            <small><code><strong>Legacy Patch </strong> is available for 45 Build image and below</code></small>
+        </div>
+      </div>
+      
   		<p>Remove Files and Packages
   		<br><small>List all the Files and Packages to be removed. Use colon ' : ' as a seprator.<br>Prefixes : <b>boot-, core-, basic-, apps-, data- and root-</b>.</small></p>
   		<div class="form-group row">
@@ -105,4 +106,5 @@
     		</div>
   		</div>	
 	</form>
+  
 {% endblock content %}
