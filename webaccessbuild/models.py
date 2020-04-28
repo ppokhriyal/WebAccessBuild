@@ -41,6 +41,7 @@ class PB(db.Model):
 
 
 class RegisteredNode(db.Model):
+	__bind_key__ = 'registernode'
 	id = db.Column(db.Integer,primary_key=True)
 	ipaddress = db.Column(db.String(20),unique=True,nullable=False)
 	hostname = db.Column(db.String(20),nullable=False)
