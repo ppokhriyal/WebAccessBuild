@@ -176,7 +176,7 @@ def pb_newbuild():
                             #Check for prefix
                             prefix = i.split('-',1)
 
-                            if prefix[0].casefold() not in ['core','basic','apps']:
+                            if prefix[0].casefold() not in ['core','basic','apps','boot','data','root']:
                                 flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
                                 return redirect(url_for('pb_home'))
 
@@ -191,10 +191,19 @@ def pb_newbuild():
                             if prefix[0].casefold() == 'apps':
                                 Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg/apps:'+prefix[1]).touch()
 
+                            if prefix[0].casefold() == 'boot':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg/boot:'+prefix[1]).touch()
+
+                            if prefix[0].casefold() == 'data':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg/data:'+prefix[1]).touch()
+
+                            if prefix[0].casefold() == 'root':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg/root:'+prefix[1]).touch()
+
                     except Exception as ee:
                         print(ee)
 
-                #Check if Install script is empty
+                #Check if Install script is not empty
                 if len(form.pb_install_script.data) != 0:
 
                     install_script = form.pb_install_script.data.split(' ')
@@ -243,10 +252,12 @@ def pb_newbuild():
             else:
                 #Legacy patch selected
                 os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/add-pkg')
+                
                 #copy the new build package
                 cmd = "cp -pa "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/'+str(form.pb_osarch.data)+'/'+str(form.pb_pkgname.data).casefold().split(':')[0]+'/'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq'+" "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/add-pkg/'+str(form.pb_pkgname.data).casefold().split(':')[0]+':'+str(form.pb_pkgname.data).casefold().split(':')[1]+'.sq'
                 proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
                 o,e = proc.communicate()
+
                 #Check for remove packages and files
                 if len(form.pb_removepkg.data) != 0:
                     remove_pkgs = form.pb_removepkg.data.split(':')
@@ -254,7 +265,7 @@ def pb_newbuild():
                         for i in remove_pkgs:
                             #Check for prefix
                             prefix = i.split('-',1)
-                            if prefix[0].casefold() not in ['core','basic','apps']:
+                            if prefix[0].casefold() not in ['core','basic','apps','boot','data','root']:
                                 flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
                                 return redirect(url_for('pb_home'))
 
@@ -268,6 +279,15 @@ def pb_newbuild():
 
                             if prefix[0].casefold() == 'apps':
                                 Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg/apps:'+prefix[1]).touch()
+
+                            if prefix[0].casefold() == 'boot':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg/boot:'+prefix[1]).touch()
+
+                            if prefix[0].casefold() == 'data':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg/data:'+prefix[1]).touch()
+    
+                            if prefix[0].casefold() == 'root':
+                                Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg/root:'+prefix[1]).touch()
 
                     except Exception as ee:
                         print(ee)

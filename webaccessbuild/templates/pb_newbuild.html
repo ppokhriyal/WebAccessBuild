@@ -64,21 +64,22 @@
       			<small><code>Give absolute path for the package structure</code></small>
     		</div>
   		</div>
+        <div class="form-group form-check">
+        {{form.pb_needpatch(class="form-check-input",id="patchcheck",onclick="mycheckfunc()")}}
+        <label class="form-check-label"><strong>Prepare Patch</strong></label>
+      </div>
   		 <hr class="my-2">
-  		<div class="form-group form-check">
-    		{{form.pb_needpatch(class="form-check-input",id="exampleCheck1")}}
-    		<label class="form-check-label">Prepare Patch</label>
-  		</div>
+  	
       <div class="form-group row">
         <label class="col-sm-3 col-form-label">Patch Name</label>
         <div class="col-sm-7">
-          {{form.pb_patchname(class="form-control")}}
+          {{form.pb_patchname(class="form-control",id="patchname")}}
         </div>
       </div>
       <div class="form-group row">
         <label class="col-sm-3 col-form-label">Patch Mode</label>
         <div class="col-sm-7">
-            {{form.pb_patchtype(class="form-control")}}
+            {{form.pb_patchtype(class="form-control",id="patchmode")}}
             <small><code><strong>Current Patch </strong> is available for 005 Build image and above</code></small><br>
             <small><code><strong>Legacy Patch </strong> is available for 45 Build image and below</code></small>
         </div>
@@ -88,14 +89,14 @@
   		<br><small>List all the Files and Packages to be removed. Use colon ' : ' as a seprator.<br>Prefixes : <b>boot-, core-, basic-, apps-, data- and root-</b>.</small></p>
   		<div class="form-group row">
     		<div class="col-sm-10 ">
-      			{{form.pb_removepkg(class="form-control",placeholder='Example : apps-abc.sq:boot-kernel')}}
+      			{{form.pb_removepkg(class="form-control",id="remove",placeholder='Example : apps-abc.sq:boot-kernel')}}
     		</div>
   		</div>
   		<p>Install Script 
   		<br><small>Write your custom install script.</small></p>
   		<div class="form-group row">
     		<div class="col-sm-10">
-      			{{form.pb_install_script(class="form-control")}}
+      			{{form.pb_install_script(class="form-control",id="installscript")}}
     		</div>
   		</div>
   		<div class="border-top pt-2"></div>
@@ -106,5 +107,28 @@
     		</div>
   		</div>	
 	</form>
-  
+  <script type="text/javascript">
+    document.getElementById("patchname").disabled = true;
+    document.getElementById("patchmode").disabled = true;
+    document.getElementById("remove").disabled = true;
+    document.getElementById("installscript").disabled = true;
+  </script>
+  <script type="text/javascript">
+     function mycheckfunc(){
+      var checkBox = document.getElementById("patchcheck");
+
+      if (checkBox.checked == true){
+          document.getElementById("patchname").disabled = false;
+          document.getElementById("patchmode").disabled = false;
+          document.getElementById("remove").disabled = false;
+          document.getElementById("installscript").disabled = false;
+      }
+      else{
+        document.getElementById("patchname").disabled = true;
+        document.getElementById("patchmode").disabled = true;
+        document.getElementById("remove").disabled = true;
+        document.getElementById("installscript").disabled = true;
+      }
+     }
+  </script>
 {% endblock content %}
