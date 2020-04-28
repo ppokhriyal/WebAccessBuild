@@ -86,10 +86,11 @@
       </div>
       
   		<p>Remove Files and Packages
-  		<br><small>List all the Files and Packages to be removed. Use colon ' : ' as a seprator.<br>Prefixes : <b>boot-, core-, basic-, apps-, data- and root-</b>.</small></p>
+  		<br><small>List all the Files and Packages to be removed. Use colon ' : ' as a seprator.<br>Prefixes : <b>boot-, core-, basic-, apps-, data- and root-</b>.<br>
+        Wild-Card : You can give the <b>wild-card "*"</b> after the package name.<b>e.g apps-example*:basic-example2*</b></small></p>
   		<div class="form-group row">
     		<div class="col-sm-10 ">
-      			{{form.pb_removepkg(class="form-control",id="remove",placeholder='Example : apps-abc.sq:boot-kernel')}}
+      			{{form.pb_removepkg(class="form-control",id="remove",placeholder='Example : apps-abc.sq:boot-kernel:apps-example*:basic-example2*')}}
     		</div>
   		</div>
   		<p>Install Script 

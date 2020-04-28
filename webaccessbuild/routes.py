@@ -106,9 +106,10 @@ def pb_newbuild():
     if not len(os.listdir(pb_pkgbuildpath)) == 0:
         for f in os.listdir(pb_pkgbuildpath):
             file = pathlib.Path(pb_pkgbuildpath+f+"/finish.true")
-            cmd = "rm -Rf "+pb_pkgbuildpath+str(f)
-            proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            o,e = proc.communicate()
+            if not file.exists():
+                cmd = "rm -Rf "+pb_pkgbuildpath+str(f)
+                proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o,e = proc.communicate()
 
     if form.validate_on_submit():
 
@@ -169,6 +170,7 @@ def pb_newbuild():
                 #Check for remove packages and files
                 if len(form.pb_removepkg.data) != 0:
 
+                    os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg')
                     remove_pkgs = form.pb_removepkg.data.split(':')
 
                     try:
@@ -179,8 +181,6 @@ def pb_newbuild():
                             if prefix[0].casefold() not in ['core','basic','apps','boot','data','root']:
                                 flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
                                 return redirect(url_for('pb_home'))
-
-                            os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg')    
 
                             if prefix[0].casefold() == 'core':
                                 Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/sda1/data/firmware_update/delete-pkg/core:'+prefix[1]).touch()
@@ -221,7 +221,7 @@ def pb_newbuild():
                 subprocess.call(["chmod -R 755 "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)],shell=True)
 
                 #Build Final Patch Tar
-                patch_name = form.pb_patchname.data.replace(' ','_')+'.tar.bz2'
+                patch_name = str(form.pb_pkgbuildid.data)+'_'+form.pb_patchname.data.replace(' ','_')+'.tar.bz2'
                 tar_file_path = pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/'+patch_name
                 tar = tarfile.open(tar_file_path,mode='w:bz2')
                 os.chdir(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/')
@@ -240,7 +240,7 @@ def pb_newbuild():
                 pb_patch_md5sum = o.decode('utf-8').split(' ')[0]
 
                 #Update DataBase
-                update_db = PB(pb_buildid=form.pb_pkgbuildid.data,pb_pkgname=form.pb_pkgname.data.split(':')[1],pb_patchname=form.pb_patchname.data.replace(' ','_'),pb_description=form.pb_pkgdescription.data,
+                update_db = PB(pb_buildid=form.pb_pkgbuildid.data,pb_pkgname=form.pb_pkgname.data.split(':')[1],pb_patchname=str(form.pb_pkgbuildid.data)+'_'+form.pb_patchname.data.replace(' ','_'),pb_description=form.pb_pkgdescription.data,
                     pb_os_arch=form.pb_osarch.data,pb_md5sum_pkg=pb_pkg_md5sum,pb_md5sum_patch=pb_patch_md5sum,pb_author=current_user)
                 db.session.add(update_db)
                 db.session.commit()
@@ -260,6 +260,8 @@ def pb_newbuild():
 
                 #Check for remove packages and files
                 if len(form.pb_removepkg.data) != 0:
+
+                    os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg')
                     remove_pkgs = form.pb_removepkg.data.split(':')
                     try:
                         for i in remove_pkgs:
@@ -268,8 +270,6 @@ def pb_newbuild():
                             if prefix[0].casefold() not in ['core','basic','apps','boot','data','root']:
                                 flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
                                 return redirect(url_for('pb_home'))
-
-                            os.makedirs(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg')    
 
                             if prefix[0].casefold() == 'core':
                                 Path(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/root/firmware_update/delete-pkg/core:'+prefix[1]).touch()
@@ -312,14 +312,13 @@ def pb_newbuild():
                         f.write('exit 0')
 
                     #Remove ^M from install script
-                    subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/install"],shell=True)
-                    
+                    subprocess.call(["sed -i -e 's/\r//g' "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+"/Patch/root/install"],shell=True) 
 
                 #CHMOD
                 subprocess.call(["chmod -R 755 "+pb_pkgbuildpath+str(form.pb_pkgbuildid.data)],shell=True)
 
                 #Build Final Patch Tar
-                patch_name = form.pb_patchname.data.replace(' ','_')+'.tar.bz2'
+                patch_name = str(form.pb_pkgbuildid.data)+'_'+form.pb_patchname.data.replace(' ','_')+'.tar.bz2'
                 tar_file_path = pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/'+patch_name
                 tar = tarfile.open(tar_file_path,mode='w:bz2')
                 os.chdir(pb_pkgbuildpath+str(form.pb_pkgbuildid.data)+'/Patch/')
@@ -338,7 +337,7 @@ def pb_newbuild():
                 pb_patch_md5sum = o.decode('utf-8').split(' ')[0]
 
                 #Update DataBase
-                update_db = PB(pb_buildid=form.pb_pkgbuildid.data,pb_pkgname=form.pb_pkgname.data.split(':')[1],pb_patchname=form.pb_patchname.data.replace(' ','_'),pb_description=form.pb_pkgdescription.data,
+                update_db = PB(pb_buildid=form.pb_pkgbuildid.data,pb_pkgname=form.pb_pkgname.data.split(':')[1],pb_patchname=str(form.pb_pkgbuildid.data)+'_'+form.pb_patchname.data.replace(' ','_'),pb_description=form.pb_pkgdescription.data,
                     pb_os_arch=form.pb_osarch.data,pb_md5sum_pkg=pb_pkg_md5sum,pb_md5sum_patch=pb_patch_md5sum,pb_author=current_user)
                 db.session.add(update_db)
                 db.session.commit()
