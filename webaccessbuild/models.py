@@ -18,6 +18,7 @@ class User(db.Model,UserMixin):
 	password_decrypted = db.Column(db.String(60),nullable=False)
 	reg_host_node = db.relationship('RegisteredNode',backref='register_host_node',lazy=True,cascade='all,delete-orphan')
 	pb_info = db.relationship('PB',backref='pb_author',lazy=True,cascade='all,delete-orphan')
+	fb_info = db.relationship('FB',backref='fb_author',lazy=True,cascade='all,delete-orphan')
 
 	def __repr__(self):
 		return f"User('{self.username}','{self.email}','{self.reg_host_node}')"
@@ -50,3 +51,18 @@ class RegisteredNode(db.Model):
 	def __repr__(self):
 
 		return f"{self.ipaddress}"
+
+class FB(db.Model):
+	__bind_key__ = 'fb'
+	id = db.Column(db.Integer,primary_key=True)
+	fb_buildid = db.Column(db.Integer,unique=True,nullable=False)
+	fb_name = db.Column(db.String(60),nullable=False)
+	fb_date_posted = db.Column(db.DateTime(),nullable=False,default=datetime.now)
+	fb_description = db.Column(db.Text,nullable=False)
+	fb_os_arch = db.Column(db.Text,nullable=False)
+	fb_md5sum = db.Column(db.String(50),nullable=False)
+	user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+	def __repr__(self):
+
+		return f"Post('{self.fb_buildid}','{self.fb_name}','{self.fb_description}')"	

@@ -1,8 +1,8 @@
 from flask import render_template, url_for, flash, redirect, request, abort, session
 from webaccessbuild import app, db, bcrypt
-from webaccessbuild.forms import LoginForm,RegistrationForm,PBBuildForm,PBAddHostForm
+from webaccessbuild.forms import LoginForm,RegistrationForm,PBBuildForm,PBAddHostForm,FBBuildForm
 from flask_login import login_user, current_user, logout_user, login_required
-from webaccessbuild.models import User,PB,RegisteredNode
+from webaccessbuild.models import User,PB,RegisteredNode,FB
 import random
 import os
 import os.path
@@ -381,6 +381,66 @@ def pb_delete(pb_id):
     flash('Package Build information deleted successfully','success')
     return redirect(url_for('pb_home'))
 
+#####Firmware Update Patch#####
+#FB Home
+@app.route('/fb_home',methods=['GET','POST'])
+def fb_home():
+
+    return render_template('fb_home.html',title='Firmware Update Patch')
+
+
+#FB New Build
+@app.route('/fb_newbuild',methods=['GET','POST'])
+@login_required
+def fb_newbuild():
+    form = FBBuildForm()
+    
+    #FB WorkArea
+    fbbuildid = random.randint(1111,9999)
+    fbbuildpath = '/var/www/html/Firmware/'
+
+    #Remove FB which are not finished
+    if not len(os.listdir(fbbuildpath)) == 0:
+        for f in os.listdir(fbbuildpath):
+            file = pathlib.Path(fbbuildpath+f+"/finish.true")
+            if not file.exists():
+                cmd = "rm -Rf "+fbbuildpath+str(f)
+                proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o,e = proc.communicate()
+
+    if form.validate_on_submit():
+
+        #Create FB Working Directory
+        os.makedirs(fbbuildpath+str(form.fb_buildid.data))
+        os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data)
+
+        #Check for Firmware Mode
+        if form.fb_type.data == "Current Patch":
+
+            #Build Current Patch work area template
+            os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/sda1/data/firmware_update/')
+            os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/')
+
+            #Check for MinMax
+            if form.fb_min_img_build.data == 1 and form.fb_max_img_build.data == 1:
+                #skip findminmax and create default script
+                with open(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/findminmax.sh',"a") as f:
+                    f.write("#!/bin/bash")
+                    f.write('\n\n')
+                    f.write("mount -o remount,rw /sda1")
+                    f.write('\n')
+                    f.write("exit 0")
+
+                #Remove ^M
+                subprocess.call(["sed -i -e 's/\r//g' /var/www/html/Firmware/"+str(form.fb_buildid.data)+form.fb_osarch.data+"/template/root/findminmax.sh"],shell=True)
+
+        else:
+            #Build Legacy Patch work area template
+            os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/')
+            os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/')
+
+
+    return render_template('fb_newbuild.html',title='Firmware New Build',form=form,build=fbbuildid)
 
 #User Login Page
 @app.route('/login',methods=['GET','POST'])

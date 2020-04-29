@@ -2,10 +2,10 @@ from flask_wtf import FlaskForm
 from flask_mde import Mde, MdeField
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, TextAreaField, SelectField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, TextAreaField, SelectField,IntegerField
 from wtforms.ext.sqlalchemy.fields import QuerySelectField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, InputRequired,IPAddress
-from webaccessbuild.models import User,PB,RegisteredNode
+from webaccessbuild.models import User,PB,RegisteredNode,FB
 
 
 #Login Form
@@ -65,10 +65,30 @@ class PBBuildForm(FlaskForm):
 		if FLAG == "flase":
 			raise ValidationError("Please Check the Package name")	
 
-
-		
-
 #PB Add Host
 class PBAddHostForm(FlaskForm):
 	pb_remote_host_ip = StringField('Remote Host IP Address',validators=[DataRequired(),IPAddress(message="Please Give Valid IP-Address")])
 	pb_submit = SubmitField('Register')
+
+
+#Firmware Update Patch Form
+#FB Build Info
+class FBBuildForm(FlaskForm):
+
+	fb_buildid = StringField('Firmware Build ID',render_kw={'readonly':True},validators=[DataRequired()])
+	fb_name = StringField('Firmware Name',validators=[DataRequired()])
+	fb_description = TextAreaField('Description',validators=[DataRequired()])
+	fb_osarch = SelectField('OS Architecture',choices=[('32-Bit','32-Bit'),('64-Bit','64-Bit'),('Multi-Arch','Multi-Arch')])
+	fb_type = SelectField('Patch Format',choices=[('Current Patch','Current Patch'),('Legacy Patch','Legacy Patch')])
+	fb_min_img_build = IntegerField('Minimum',validators=[DataRequired("Only Integer value is allowed and value less than 1 not allowed")])
+	fb_max_img_build = IntegerField('Maximum',validators=[DataRequired("Only Integer value is allowed and value less than 1 not allowed")])
+	fb_add = TextAreaField('Add')
+	fb_remove = TextAreaField('Remove')
+	fb_install_script = TextAreaField('install')
+	fb_submit = SubmitField('Build')
+
+	def validate_min_max_value(self,fb_min_img_build,fb_max_img_build):
+
+		if fb_min_img_build.data > fb_max_img_build.data :
+			
+			raise ValidationError("Minimum value cannot be greater then Maximum value")

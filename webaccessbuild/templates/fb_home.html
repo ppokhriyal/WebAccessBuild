@@ -1,0 +1,10 @@
+{% extends 'layout.html' %}
+{% block content %}
+	<nav aria-label="breadcrumb">
+  		<ol class="breadcrumb">
+    		<li class="breadcrumb-item"><a href="{{url_for('mainhome')}}">Home</a></li>
+    		<li class="breadcrumb-item active" aria-current="page">Firmware Update Patch Builder</li>
+    		<a href="{{url_for('fb_newbuild')}}" class="btn btn-success btn-sm ml-auto">Build New Firmware Patch</a>
+  		</ol>
+	</nav>
+{% endblock content %}
