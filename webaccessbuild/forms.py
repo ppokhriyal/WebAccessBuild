@@ -78,7 +78,7 @@ class FBBuildForm(FlaskForm):
 	fb_buildid = StringField('Firmware Build ID',render_kw={'readonly':True},validators=[DataRequired()])
 	fb_name = StringField('Firmware Name',validators=[DataRequired()])
 	fb_description = TextAreaField('Description',validators=[DataRequired()])
-	fb_osarch = SelectField('OS Architecture',choices=[('32-Bit','32-Bit'),('64-Bit','64-Bit'),('Multi-Arch','Multi-Arch')])
+	fb_osarch = SelectField('OS Architecture',choices=[('32','32-Bit'),('64','64-Bit'),('Multi-Arch','Multi-Arch')])
 	fb_type = SelectField('Patch Format',choices=[('Current Patch','Current Patch'),('Legacy Patch','Legacy Patch')])
 	fb_min_img_build = IntegerField('Minimum',validators=[DataRequired("Only Integer value is allowed and value less than 1 not allowed")])
 	fb_max_img_build = IntegerField('Maximum',validators=[DataRequired("Only Integer value is allowed and value less than 1 not allowed")])
@@ -90,5 +90,5 @@ class FBBuildForm(FlaskForm):
 	def validate_min_max_value(self,fb_min_img_build,fb_max_img_build):
 
 		if fb_min_img_build.data > fb_max_img_build.data :
-			
+
 			raise ValidationError("Minimum value cannot be greater then Maximum value")
