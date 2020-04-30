@@ -27,7 +27,8 @@ client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
 def mainhome():
 
     pb_count = len(db.session.query(PB).all())
-    return render_template('mainhome.html',title='VXL WAB',pb_count=pb_count)
+    fb_count = len(db.session.query(FB).all())
+    return render_template('mainhome.html',title='VXL WAB',pb_count=pb_count,fb_count=fb_count)
 
 #PB Home
 @app.route('/pb_home')
@@ -387,8 +388,11 @@ def pb_delete(pb_id):
 #FB Home
 @app.route('/fb_home',methods=['GET','POST'])
 def fb_home():
+    page = request.args.get('page',1,type=int)
+    fb = FB.query.filter_by(fb_author=current_user).order_by(FB.fb_date_posted.desc()).paginate(page=page,per_page=4)
+    fb_count = len(db.session.query(FB).all())
 
-    return render_template('fb_home.html',title='Firmware Update Patch')
+    return render_template('fb_home.html',title='Firmware Update Patch',fb=fb,fb_count=fb_count)
 
 
 #FB New Build
@@ -466,10 +470,10 @@ def fb_newbuild():
                                 wget.download(url=prefix[1],out=fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/sda1/data/firmware_update/add-pkg/root:'+pkgname[0])                    
                         else:
                             flash(f'Invalid URL : {prefix[1]}','danger')
-
+                            return redirect(url_for('fb_home'))
                     except Exception as ee :
-
                         flash(f'Invalid URL : {prefix[1]}','danger')
+                        return redirect(url_for('fb_home'))
 
             #Check for Remove files and Packages
             if len(form.fb_remove.data) != 0:
@@ -484,7 +488,7 @@ def fb_newbuild():
 
                     if prefix[0].casefold() not in ['core','basic','apps','boot','data','root']:
                         flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
-
+                        return redirect(url_for('fb_home'))
 
                     if prefix[0].casefold() == 'core':
                         Path(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/sda1/data/firmware_update/delete-pkg/'+'boot:'+prefix[1]).touch()
@@ -518,6 +522,7 @@ def fb_newbuild():
 
             elif form.fb_min_img_build.data > form.fb_max_img_build.data :
                 flash(f"Minimum Build cannot be greater than Maximum Build",'danger')
+                return redirect(url_for('fb_home'))
             else:
 
                 #Total size of packages to be added
@@ -593,7 +598,7 @@ exit 0
     
 """)
 
-            f.close()
+                f.close()
 
             #Writing Install Script
             if len(form.fb_install_script.data) !=0 :
@@ -610,14 +615,60 @@ exit 0
                 subprocess.call(["sed -i -e 's/\r//g' "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/install'],shell=True)    
 
             #CHMOD
-            subprocess.call(["chmod -R 755 "+fbbuildpath+str(form.fb_buildid.data)],shell=True)    
+            subprocess.call(["chmod -R 755 "+fbbuildpath+str(form.fb_buildid.data)],shell=True)
+
+            #Build Final Patch Tar
+            patchname = form.fb_buildid.data+'_'+form.fb_name.data.replace(' ','_')+'.tar.bz2'
+            tar_file_path = fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname
+            tar = tarfile.open(tar_file_path,mode='w:bz2')
+            os.chdir(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/')
+            tar.add(".")
+            tar.close()
+
+            #Damage Patch
+            cmd = "damage corrupt "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname+" 1"
+            proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            o,e = proc.communicate()
+
+            #MD5SUM of Patch
+            cmd = "md5sum "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname
+            proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            o,e = proc.communicate()
+            patch_md5sum = o.decode('utf-8').split(' ')[0]
+
+            #Update DataBase
+            update_db = FB(fb_buildid=form.fb_buildid.data,fb_name=patchname,fb_description=form.fb_description.data,fb_os_arch=form.fb_osarch.data,fb_md5sum=patch_md5sum,fb_author=current_user)
+            db.session.add(update_db)
+            db.session.commit()
+
+            flash(f'Firmware Update Patch created successfully','success')
+            return redirect(url_for('fb_home'))
+
         else:
+            
             #Build Legacy Patch work area template
             os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/')
             os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/')
 
 
     return render_template('fb_newbuild.html',title='Firmware New Build',form=form,build=fbbuildid)
+
+#Remove Firmware
+@app.route('/delete_fb/<int:fb_id>')
+@login_required
+def delete_fb(fb_id):
+    fb_info = FB.query.get_or_404(fb_id)
+    if fb_info.fb_author != current_user:
+         abort(403)
+
+    db.session.delete(fb_info)
+    db.session.commit()
+
+    cmd = "rm -Rf /var/www/html/Firmware/"+str(fb_info.fb_buildid)
+    proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    o,e = proc.communicate()
+    flash('Firmware Build information deleted successfully','success')
+    return redirect(url_for('fb_home'))
 
 #User Login Page
 @app.route('/login',methods=['GET','POST'])

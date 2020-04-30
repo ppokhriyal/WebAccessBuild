@@ -7,4 +7,43 @@
     		<a href="{{url_for('fb_newbuild')}}" class="btn btn-success btn-sm ml-auto">Build New Firmware Patch</a>
   		</ol>
 	</nav>
+	{% if fb_count == 0 %}
+		<p>Empty Firmware Patch Build History !!</p>
+	{% else %}
+		{% for i in fb.items %}
+			<div class="media my-3 p-3 bg-light rounded shadow-sm ">
+				<img src="{{url_for('static',filename='images/fb.png')}}" width="32" height="32" class="mr-3" alt="...">
+				<div class="media-body">
+					<h5 class="mt-0">{{i.fb_name}}</h5>
+					<p class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray">
+						<strong class="" lass="d-block text-gray-dark">Build by {{i.fb_author.username}} | Dated : {{ i.fb_date_posted.strftime('%d-%m-%Y')}} | Time : {{i.fb_date_posted.strftime('%H:%M %p')}}</strong>
+					</p>
+					<p class="media-body pt-1 pb-2 small lh-125 border-bottom border-gray ">{{i.fb_description | safe}}</p>
+					<small>
+						<i class="fas fa-arrow-alt-circle-right"></i> Firmware Patch Build Id <mark>{{i.fb_buildid}}</mark><br>
+						<i class="fas fa-sitemap"></i> Firmware OS Architecture is <mark>{{i.fb_os_arch}}-Bit</mark> <br>
+						<i class="fas fa-cloud-download-alt"></i> Download URL available <a href="#">now</a><br>
+						<i class="fas fa-check-circle"></i> Firmware Patch {{i.fb_name}}.tar.bz2 md5sum is <mark>{{i.fb_md5sum}}</mark><br>
+					</small>
+					<div class="border-top pt-1 mb-2"></div>
+					{% if i.fb_author == current_user %}
+						<a class="badge badge-danger float-right pb-1" href="{{url_for('delete_fb',fb_id=i.id)}}" role="button">Remove</a>
+					{% endif %}
+				</div>
+			</div>
+		{% endfor %}
+		<div class="rounded-0 col-lg-13 mx-auto">
+    		{% for page_num in fb.iter_pages(left_edge=1,right_edge=1,left_current=1,right_current=2) %}
+      			{% if page_num %}
+        			{% if fb.page == page_num %}
+          				<a class="btn btn-secondary mb-4 mt-2" href="{{ url_for('fb_home',page=page_num)}}">{{ page_num }}</a>
+        			{% else %}
+          				<a class="btn btn-outline-info mb-4 mt-2" href="{{ url_for('fb_home',page=page_num)}}">{{ page_num }}</a>
+        			{% endif %}  
+      			{% else %}
+        			...
+      			{% endif %}
+    		{% endfor %}
+   		</div>	
+	{% endif %}
 {% endblock content %}
