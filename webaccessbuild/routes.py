@@ -430,6 +430,7 @@ def fb_newbuild():
             #Check if Add and Remove both are empty
             if len(form.fb_add.data) == 0 and len(form.fb_remove.data) == 0:
                 flash(f"Both Add and Remove Files and Packages cannot be empty",'danger')
+                return redirect(url_for('fb_home'))
 
             #Check if Add Files and Packages are not empty
             if len(form.fb_add.data) != 0:
@@ -484,7 +485,7 @@ def fb_newbuild():
                 for i in remove_pkgs:
 
                     #Check Prefix
-                    prefix = i.split('-',1)
+                    prefix = i.split(':',1)
 
                     if prefix[0].casefold() not in ['core','basic','apps','boot','data','root']:
                         flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
@@ -645,11 +646,217 @@ exit 0
             return redirect(url_for('fb_home'))
 
         else:
-            
+
             #Build Legacy Patch work area template
             os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/')
-            os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/')
 
+            #Check if Add and Remove both are empty
+            if len(form.fb_add.data) == 0 and len(form.fb_remove.data) == 0:
+                flash(f"Both Add and Remove Files and Packages cannot be empty",'danger')
+                return redirect(url_for('fb_home'))
+
+            #Check if Add Files and Packages are not empty
+            if len(form.fb_add.data) != 0:
+                os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/add-pkg/')
+                add_pkgs = form.fb_add.data.split(';')
+
+                for i in add_pkgs:
+                    #Check for Prefix
+                    prefix = i.split('-',1)
+
+                    if prefix[0].casefold() not in ['core','basic','apps','boot','data','root']:
+                        flash(f'Missing Prefix in {prefix[0]},while adding package','danger')
+                        return redirect(url_for('fb_home'))
+
+                    #Check URL Status
+                    try:
+                        url_status =  requests.head(prefix[1])
+                        if url_status.status_code == 200:
+                            pkgname = prefix[1].split('/')[::-1]
+
+                            if prefix[0].casefold() == 'core':
+                                wget.download(url=prefix[1],out=fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/add-pkg/core:'+pkgname[0])
+
+                            if prefix[0].casefold() == 'basic':
+                                wget.download(url=prefix[1],out=fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/add-pkg/basic:'+pkgname[0])
+
+                            if prefix[0].casefold() == 'apps':
+                                wget.download(url=prefix[1],out=fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/add-pkg/apps:'+pkgname[0])
+
+                            if prefix[0].casefold() == 'boot':
+                                wget.download(url=prefix[1],out=fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/add-pkg/boot:'+pkgname[0])
+                                
+                            if prefix[0].casefold() == 'data':
+                                wget.download(url=prefix[1],out=fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/add-pkg/data:'+pkgname[0])
+                                
+                            if prefix[0].casefold() == 'root':
+                                wget.download(url=prefix[1],out=fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/add-pkg/root:'+pkgname[0])    
+
+                        else:
+                            flash(f'Invalid URL : {prefix[1]}','danger')
+                            return redirect(url_for('fb_home'))
+
+                    except Exception as ee:
+                            flash(f'Invalid URL : {prefix[1]}','danger')
+                            return redirect(url_for('fb_home'))
+
+            #Check for Remove files and Packages
+            if len(form.fb_remove.data) != 0:
+                os.makedirs(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/delete-pkg/')
+                remove_pkgs = form.fb_remove.data.split(';')
+
+                for i in remove_pkgs:
+                    #Check Prefix
+                    prefix = i.split('-',1)
+
+                    if prefix[0].casefold() not in ['core','basic','apps','boot','data','root']:
+                        flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
+                        return redirect(url_for('fb_home'))
+
+                    if prefix[0].casefold() == 'core':
+                        Path(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/delete-pkg/'+'boot:'+prefix[1]).touch()
+
+                    if prefix[0].casefold() == 'basic':
+                        Path(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/delete-pkg/'+'basic:'+prefix[1]).touch()
+
+                    if prefix[0].casefold() == 'apps':
+                        Path(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/delete-pkg/'+'apps:'+prefix[1]).touch()
+
+                    if prefix[0].casefold() == 'boot':
+                        Path(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/delete-pkg/'+'boot:'+prefix[1]).touch()
+
+                    if prefix[0].casefold() == 'data':
+                        Path(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/delete-pkg/'+'data:'+prefix[1]).touch()
+
+                    if prefix[0].casefold() == 'root':
+                        Path(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/delete-pkg/'+'root:'+prefix[1]).touch()
+
+                #Check for MinMax
+                if form.fb_min_img_build.data !=1 and form.fb_max_img_build.data !=1:
+                    #skip findminmax and create default script
+                    with open(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/findminmax.sh',"a") as f:
+                        f.write("#!/bin/bash")
+                        f.write('\n\n')
+                        f.write("mount -o remount,rw /sda1")
+                        f.write('\n')
+                        f.write("exit 0")
+
+                    #Remove ^M
+                    subprocess.call(["sed -i -e 's/\r//g' /var/www/html/Firmware/"+str(form.fb_buildid.data)+form.fb_osarch.data+"/template/root/findminmax.sh"],shell=True)
+
+                elif form.fb_min_img_build.data > form.fb_max_img_build.data :
+                    flash(f"Minimum Build cannot be greater than Maximum Build",'danger')
+                    return redirect(url_for('fb_home'))
+                else:
+
+                    #Total size of packages to be added
+                    cmd = "du -schBM "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+"/template/root/firmware_update/add-pkg/* | tail -n1 | awk -F' ' '{print $1}'"
+                    proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                    e,o = proc.communicate()
+                    add_pkg_size = e.decode('utf8').rstrip('\n')
+
+                    #Start writing FindMinMax Script
+                    f = open(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/findminmax.sh',"x")
+                    f.write(f"""#!/bin/bash\n\n
+mount -o remount,rw /sda1\n
+#Check for OS-Arch
+os_arch_type = `file /usr/verixo-bin/OS_Desktop`
+echo $os_arch_type | grep -i "ELF 32-bit LSB executable"
+status=$?
+if [ $status -eq 0 ]
+then
+    os_arch_type=32
+else
+    os_arch_type=64
+fi
+if [ {form.fb_osarch.data} == "Multi-Arch" ]
+then
+    echo "It's a Multi-Arch Patch"
+else
+    if [ {form.fb_osarch.data} -ne "$os_arch_type" ]
+    then
+        exit 1
+    fi
+fi
+#Check Min/Max value
+/usr/verixo-bin/verify-patch.sh {form.fb_min_img_build.data} {form.fb_max_img_build.data}
+status=$?
+if [ $status -ne 0 ]
+then
+    exit 1
+fi
+#Check for Update Build
+if [ -f /root/firmware_update/add-pkg/basic:verixo-bin.sq ]
+then
+    mkdir /opt/demoloop
+    mount -o loop /root/firmware_update/add-pkg/basic:verixo-bin.sq /opt/demoloop/
+    build=`cat /opt/demoloop/usr/verixo-bin/.updatebuild
+    umount /opt/demoloop
+    rm -rf /opt/demoloop
+    /usr/verixo-bin/Firmwareupdate --checkupdatebuild $build
+    status=$?
+    if [ $status -ne 0 ]
+    then
+        exit 1
+    fi
+fi
+#Available Space left for Package to be added
+/usr/verixo-bin/Firmwareupdate --checksize {add_pkg_size}
+status=$?
+if [ $status -ne 0 ]
+then
+    exit 1
+fi
+#All Good
+exit 0
+    
+""")
+
+                    f.close()
+
+                    #Writing Install Script
+                    if len(form.fb_install_script.data) !=0 :
+
+                        install_script = form.fb_install_script.data.split(' ')
+                        f = open(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/install',"a+")
+                        f.write("#!/bin/bash\n")
+                        for i in " ".join(install_script):
+                            f.write(i)
+
+                        f.close()
+
+                    #Remove ^M from install script
+                    subprocess.call(["sed -i -e 's/\r//g' "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/install'],shell=True)    
+
+                    #CHMOD
+                    subprocess.call(["chmod -R 755 "+fbbuildpath+str(form.fb_buildid.data)],shell=True)
+
+                    #Build Final Patch Tar
+                    patchname = form.fb_buildid.data+'_'+form.fb_name.data.replace(' ','_')+'.tar.bz2'
+                    tar_file_path = fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname
+                    tar = tarfile.open(tar_file_path,mode='w:bz2')
+                    os.chdir(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/')
+                    tar.add(".")
+                    tar.close()
+
+                    #Damage Patch
+                    cmd = "damage corrupt "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname+" 1"
+                    proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                    o,e = proc.communicate()
+
+                    #MD5SUM of Patch
+                    cmd = "md5sum "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname
+                    proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                    o,e = proc.communicate()
+                    patch_md5sum = o.decode('utf-8').split(' ')[0]
+
+                    #Update DataBase
+                    update_db = FB(fb_buildid=form.fb_buildid.data,fb_name=patchname,fb_description=form.fb_description.data,fb_os_arch=form.fb_osarch.data,fb_md5sum=patch_md5sum,fb_author=current_user)
+                    db.session.add(update_db)
+                    db.session.commit()
+
+                    flash(f'Firmware Update Patch created successfully','success')
+                    return redirect(url_for('fb_home'))
 
     return render_template('fb_newbuild.html',title='Firmware New Build',form=form,build=fbbuildid)
 
