@@ -642,6 +642,7 @@ exit 0
             db.session.add(update_db)
             db.session.commit()
 
+            Path(fbbuildpath+str(form.fb_buildid.data)+"/"+"finish.true").touch()
             flash(f'Firmware Update Patch created successfully','success')
             return redirect(url_for('fb_home'))
 
@@ -707,7 +708,7 @@ exit 0
 
                 for i in remove_pkgs:
                     #Check Prefix
-                    prefix = i.split('-',1)
+                    prefix = i.split(':',1)
 
                     if prefix[0].casefold() not in ['core','basic','apps','boot','data','root']:
                         flash(f'Missing Prefix in {prefix[0]},while removing package','danger')
@@ -732,7 +733,7 @@ exit 0
                         Path(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/firmware_update/delete-pkg/'+'root:'+prefix[1]).touch()
 
                 #Check for MinMax
-                if form.fb_min_img_build.data !=1 and form.fb_max_img_build.data !=1:
+                if form.fb_min_img_build.data == 1 and form.fb_max_img_build.data == 1:
                     #skip findminmax and create default script
                     with open(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/findminmax.sh',"a") as f:
                         f.write("#!/bin/bash")
@@ -742,7 +743,7 @@ exit 0
                         f.write("exit 0")
 
                     #Remove ^M
-                    subprocess.call(["sed -i -e 's/\r//g' /var/www/html/Firmware/"+str(form.fb_buildid.data)+form.fb_osarch.data+"/template/root/findminmax.sh"],shell=True)
+                    subprocess.call(["sed -i -e 's/\r//g' /var/www/html/Firmware/"+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+"/template/root/findminmax.sh"],shell=True)
 
                 elif form.fb_min_img_build.data > form.fb_max_img_build.data :
                     flash(f"Minimum Build cannot be greater than Maximum Build",'danger')
@@ -825,38 +826,39 @@ exit 0
 
                         f.close()
 
-                    #Remove ^M from install script
-                    subprocess.call(["sed -i -e 's/\r//g' "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/install'],shell=True)    
+                        #Remove ^M from install script
+                        subprocess.call(["sed -i -e 's/\r//g' "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/root/install'],shell=True)    
 
-                    #CHMOD
-                    subprocess.call(["chmod -R 755 "+fbbuildpath+str(form.fb_buildid.data)],shell=True)
+            #CHMOD
+            subprocess.call(["chmod -R 755 "+fbbuildpath+str(form.fb_buildid.data)],shell=True)
 
-                    #Build Final Patch Tar
-                    patchname = form.fb_buildid.data+'_'+form.fb_name.data.replace(' ','_')+'.tar.bz2'
-                    tar_file_path = fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname
-                    tar = tarfile.open(tar_file_path,mode='w:bz2')
-                    os.chdir(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/')
-                    tar.add(".")
-                    tar.close()
+            #Build Final Patch Tar
+            patchname = form.fb_buildid.data+'_'+form.fb_name.data.replace(' ','_')+'.tar.bz2'
+            tar_file_path = fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname
+            tar = tarfile.open(tar_file_path,mode='w:bz2')
+            os.chdir(fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/template/')
+            tar.add(".")
+            tar.close()
 
-                    #Damage Patch
-                    cmd = "damage corrupt "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname+" 1"
-                    proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-                    o,e = proc.communicate()
+            #Damage Patch
+            cmd = "damage corrupt "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname+" 1"
+            proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            o,e = proc.communicate()
 
-                    #MD5SUM of Patch
-                    cmd = "md5sum "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname
-                    proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-                    o,e = proc.communicate()
-                    patch_md5sum = o.decode('utf-8').split(' ')[0]
+            #MD5SUM of Patch
+            cmd = "md5sum "+fbbuildpath+str(form.fb_buildid.data)+'/'+form.fb_osarch.data+'/'+patchname
+            proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            o,e = proc.communicate()
+            patch_md5sum = o.decode('utf-8').split(' ')[0]
 
-                    #Update DataBase
-                    update_db = FB(fb_buildid=form.fb_buildid.data,fb_name=patchname,fb_description=form.fb_description.data,fb_os_arch=form.fb_osarch.data,fb_md5sum=patch_md5sum,fb_author=current_user)
-                    db.session.add(update_db)
-                    db.session.commit()
+            #Update DataBase
+            update_db = FB(fb_buildid=form.fb_buildid.data,fb_name=patchname,fb_description=form.fb_description.data,fb_os_arch=form.fb_osarch.data,fb_md5sum=patch_md5sum,fb_author=current_user)
+            db.session.add(update_db)
+            db.session.commit()
 
-                    flash(f'Firmware Update Patch created successfully','success')
-                    return redirect(url_for('fb_home'))
+            Path(fbbuildpath+str(form.fb_buildid.data)+"/"+"finish.true").touch()
+            flash(f'Firmware Update Patch created successfully','success')
+            return redirect(url_for('fb_home'))
 
     return render_template('fb_newbuild.html',title='Firmware New Build',form=form,build=fbbuildid)
 
