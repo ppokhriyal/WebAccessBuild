@@ -19,11 +19,12 @@ class User(db.Model,UserMixin):
 	reg_host_node = db.relationship('RegisteredNode',backref='register_host_node',lazy=True,cascade='all,delete-orphan')
 	pb_info = db.relationship('PB',backref='pb_author',lazy=True,cascade='all,delete-orphan')
 	fb_info = db.relationship('FB',backref='fb_author',lazy=True,cascade='all,delete-orphan')
-
+	ib_info = db.relationship('IB',backref='ib_author',lazy=True,cascade='all,delete-orphan')
+	
 	def __repr__(self):
 		return f"User('{self.username}','{self.email}','{self.reg_host_node}')"
 
-
+#Package Build
 class PB(db.Model):
 	__bind_key__ = 'pb'
 	id = db.Column(db.Integer,primary_key=True)
@@ -52,6 +53,7 @@ class RegisteredNode(db.Model):
 
 		return f"{self.ipaddress}"
 
+#Firmware Build
 class FB(db.Model):
 	__bind_key__ = 'fb'
 	id = db.Column(db.Integer,primary_key=True)
@@ -66,3 +68,18 @@ class FB(db.Model):
 	def __repr__(self):
 
 		return f"Post('{self.fb_buildid}','{self.fb_name}','{self.fb_description}')"	
+
+
+#Image Build
+class IB(db.Model):
+	__bind_key__ = 'ib'
+	id = db.Column(db.Integer,primary_key=True)
+	ib_buildid = db.Column(db.Integer,unique=True,nullable=False)
+	ib_name = db.Column(db.String(100),nullable=False)
+	date_posted = db.Column(db.DateTime(),nullable=False,default=datetime.now)
+	ib_description = db.Column(db.Text,nullable=False)
+	ib_gzurl = db.Column(db.String(100),nullable=False)
+	user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+	def __repr__(self):
+		return f"IB('{self.ib_buildid}','{self.ib_name}','{self.ib_description}','{self.ib_gzurl}')"

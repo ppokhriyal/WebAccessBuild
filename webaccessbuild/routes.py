@@ -1,8 +1,8 @@
 from flask import render_template, url_for, flash, redirect, request, abort, session
 from webaccessbuild import app, db, bcrypt
-from webaccessbuild.forms import LoginForm,RegistrationForm,PBBuildForm,PBAddHostForm,FBBuildForm
+from webaccessbuild.forms import LoginForm,RegistrationForm,PBBuildForm,PBAddHostForm,FBBuildForm,IBBuildForm
 from flask_login import login_user, current_user, logout_user, login_required
-from webaccessbuild.models import User,PB,RegisteredNode,FB
+from webaccessbuild.models import User,PB,RegisteredNode,FB,IB
 import random
 import os
 import os.path
@@ -878,6 +878,74 @@ def delete_fb(fb_id):
     o,e = proc.communicate()
     flash('Firmware Build information deleted successfully','success')
     return redirect(url_for('fb_home'))
+
+#Image Builder
+@app.route('/ib_home')
+def ibhome():
+
+    return render_template('ib_home.html',title='Image Builder')
+
+#Build New Image
+@app.route('/buildimage',methods=['POST','GET'])
+def ib_buildimg():
+    form = IBBuildForm()
+    
+    #IB WorkArea
+    ib_buildid = random.randint(1111,9999)
+    ib_buildpath = '/var/www/html/Images/'
+    global read_log
+
+    #Remove Builds which are not finished
+    if not len(os.listdir(ib_buildpath)) == 0:
+        for f in os.listdir(ib_buildpath):
+            file = pathlib.Path(ib_buildpath+f+"/finish.true")
+            if not file.exists():
+                cmd = "rm -Rf "+ib_buildpath+str(f)
+                proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o,e = proc.communicate()
+
+    #Check for Form Validation
+    if form.validate_on_submit():
+
+        #Create working directory
+        os.makedirs(ib_buildpath+str(form.ib_buildid.data))
+        os.makedirs(ib_buildpath+str(form.ib_buildid.data)+'/gz')
+        os.makedirs(ib_buildpath+str(form.ib_buildid.data)+'/alpine')
+        os.makedirs(ib_buildpath+str(form.ib_buildid.data)+'/gz_mount')
+
+        #Start Logging
+        with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"w") as f:
+            f.write("Building Image")
+            f.write("\n")
+            f.write("==============")
+            f.write("\n")
+
+        with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"r") as f:
+            read_log = f.read()
+
+        #Check if Remote TC is alive
+        try:
+            with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"a") as f:
+                f.write("INFO:[ Checking ThinClient Connectivity - "+str(form.ib_rmtcip.data)+" ]")
+                f.write("\n")
+
+            with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"r") as f:
+                read_log = f.read()
+
+            client.connect(str(form.ib_rmtcip.data),timeout=3)
+
+        except Exception as ee:
+            with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"a") as f:
+                f.write("ERROR:[ Connection Timeout - "+str(form.ib_rmtcip.data)+" ]")
+                f.write("\n")
+            with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"r") as f:
+                read_log = f.read()
+                flash(f"Connection Timeout",'danger')  
+
+
+
+
+    return render_template('ib_buildimage.html',title='Build Image',form=form)
 
 #User Login Page
 @app.route('/login',methods=['GET','POST'])

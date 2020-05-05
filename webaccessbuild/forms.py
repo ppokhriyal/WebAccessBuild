@@ -92,3 +92,12 @@ class FBBuildForm(FlaskForm):
 		if fb_min_img_build.data > fb_max_img_build.data :
 
 			raise ValidationError("Minimum value cannot be greater then Maximum value")
+
+#Image Build Form
+class IBBuildForm(FlaskForm):
+	ib_buildid = StringField('Image Build ID',render_kw={'readonly':True},validators=[DataRequired()])
+	ib_name = StringField('New Image Name',validators=[DataRequired()])
+	ib_description = TextAreaField('Description',validators=[DataRequired()])
+	ib_rmtcip = QuerySelectField(query_factory=lambda:RegisteredNode.query.all())
+	ib_gzurl = StringField('URL Gz Image',validators=[DataRequired()])
+	submit = SubmitField('Build')

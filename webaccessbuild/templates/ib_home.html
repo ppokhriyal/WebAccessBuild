@@ -1,0 +1,11 @@
+{% extends 'layout.html' %}
+{% block content %}
+	<nav aria-label="breadcrumb">
+  		<ol class="breadcrumb">
+    		<li class="breadcrumb-item"><a href="{{url_for('mainhome')}}">Home</a></li>
+    		<li class="breadcrumb-item active" aria-current="page">Image Builder</li>
+    		<a href="{{url_for('ib_buildimg')}}" class="btn btn-success btn-sm ml-auto">Build New Image</a>
+  		</ol>
+	</nav>
+	
+{% endblock content %}
