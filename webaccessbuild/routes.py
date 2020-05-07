@@ -15,6 +15,9 @@ import tarfile
 import urllib3
 import wget
 import requests
+import asyncio
+import concurrent.futures
+import requests
 
 #Paramiko Global Connect
 global client
@@ -25,10 +28,12 @@ client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
 #Main Home
 @app.route('/')
 def mainhome():
-
     pb_count = len(db.session.query(PB).all())
     fb_count = len(db.session.query(FB).all())
-    return render_template('mainhome.html',title='VXL WAB',pb_count=pb_count,fb_count=fb_count)
+    ib_count = len(db.session.query(IB).all())
+    rn_count = len(db.session.query(RegisteredNode).all())
+
+    return render_template('mainhome.html',title='VXL WAB',pb_count=pb_count,fb_count=fb_count,ib_count=ib_count,rn_count=rn_count)
 
 #PB Home
 @app.route('/pb_home')
@@ -41,9 +46,9 @@ def pb_home():
 
 
 #PB Add Remote Host Node
-@app.route('/pb_addremotenode',methods=['POST','GET'])
+@app.route('/addremotenode',methods=['POST','GET'])
 @login_required
-def pb_addhostnode():
+def addhostnode():
     form = PBAddHostForm()
 
     with open('/root/.ssh/id_rsa.pub',"r") as f:
@@ -68,14 +73,14 @@ def pb_addhostnode():
             flash(f"Connection Timeout",'danger')
 
         flash(f"Remote Host Machine added successfully",'success')
-        return redirect(url_for('pb_reghostnode'))
+        return redirect(url_for('reghostnode'))
 
-    return render_template('pb_addhost.html',title='Add Remote Node',form=form,publickey_content=publickey_content)
+    return render_template('addnode.html',title='Add Remote Node',form=form,publickey_content=publickey_content)
 
 #PB Remote Host Node
-@app.route('/pb_reghostnode')
+@app.route('/reghostnodes')
 @login_required
-def pb_reghostnode():
+def reghostnode():
     page = request.args.get('page',1,type=int)
     regs_host_count = db.session.query(RegisteredNode).count()
     regs_hosts = RegisteredNode.query.paginate(page=page,per_page=4)
@@ -92,7 +97,7 @@ def pb_reghostnode():
         except Exception as ee:
             print(ee)
 
-    return render_template('pb_reghostnode.html',title='Register Host Node',regs_host_count=regs_host_count,regs_hosts=regs_hosts,host_ip_status=host_ip_status)
+    return render_template('regnodes.html',title='Register Host Node',regs_host_count=regs_host_count,regs_hosts=regs_hosts,host_ip_status=host_ip_status)
 
 
 #PB New PB
@@ -882,18 +887,64 @@ def delete_fb(fb_id):
 #Image Builder
 @app.route('/ib_home')
 def ibhome():
+    page = request.args.get('page',1,type=int)
+    ib = IB.query.order_by(IB.date_posted.desc()).paginate(page=page,per_page=4)
+    ib_count = len(db.session.query(IB).all())
 
-    return render_template('ib_home.html',title='Image Builder')
+    return render_template('ib_home.html',title='Image Builder',ib=ib,ib_count=ib_count)
 
+
+#Download size
+async def get_size(url):
+    response = requests.head(url)
+    size = int(response.headers['Content-Length'])
+    return size
+
+#Download Range
+def download_range(url, start, end, output):
+    headers = {'Range': f'bytes={start}-{end}'}
+    response = requests.get(url, headers=headers)
+
+    with open(output, 'wb') as f:
+        for part in response.iter_content(1024):
+            f.write(part)
+
+async def download(executor, url, output, chunk_size=1000000):
+    loop = asyncio.get_event_loop()
+
+    file_size = await get_size(url)
+    chunks = range(0, file_size, chunk_size)
+
+    tasks = [
+        loop.run_in_executor(
+            executor,
+            download_range,
+            url,
+            start,
+            start + chunk_size - 1,
+            f'{output}.part{i}',
+        )
+        for i, start in enumerate(chunks)
+    ]
+
+    await asyncio.wait(tasks)
+
+    with open(output, 'wb') as o:
+        for i in range(len(chunks)):
+            chunk_path = f'{output}.part{i}'
+
+            with open(chunk_path, 'rb') as s:
+                o.write(s.read())
+
+            os.remove(chunk_path)   
 #Build New Image
 @app.route('/buildimage',methods=['POST','GET'])
 def ib_buildimg():
+
     form = IBBuildForm()
-    
     #IB WorkArea
     ib_buildid = random.randint(1111,9999)
     ib_buildpath = '/var/www/html/Images/'
-    global read_log
 
     #Remove Builds which are not finished
     if not len(os.listdir(ib_buildpath)) == 0:
@@ -904,6 +955,7 @@ def ib_buildimg():
                 proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
                 o,e = proc.communicate()
 
+
     #Check for Form Validation
     if form.validate_on_submit():
 
@@ -913,39 +965,258 @@ def ib_buildimg():
         os.makedirs(ib_buildpath+str(form.ib_buildid.data)+'/alpine')
         os.makedirs(ib_buildpath+str(form.ib_buildid.data)+'/gz_mount')
 
-        #Start Logging
-        with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"w") as f:
-            f.write("Building Image")
-            f.write("\n")
-            f.write("==============")
-            f.write("\n")
-
-        with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"r") as f:
-            read_log = f.read()
 
         #Check if Remote TC is alive
         try:
-            with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"a") as f:
-                f.write("INFO:[ Checking ThinClient Connectivity - "+str(form.ib_rmtcip.data)+" ]")
-                f.write("\n")
-
-            with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"r") as f:
-                read_log = f.read()
-
             client.connect(str(form.ib_rmtcip.data),timeout=3)
-
         except Exception as ee:
-            with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"a") as f:
-                f.write("ERROR:[ Connection Timeout - "+str(form.ib_rmtcip.data)+" ]")
-                f.write("\n")
-            with open(ib_buildpath+str(form.ib_buildid.data)+'/log.txt',"r") as f:
-                read_log = f.read()
-                flash(f"Connection Timeout",'danger')  
+            flash(f"Connection Timeout",'danger')
 
+        #Check for valid url for gz image
+        try:
+            
+            check_url = requests.head(form.ib_gzurl.data)
 
+            if check_url.status_code == 200:
 
+                #Download the GZ file
+                DOWNLOAD_URL = form.ib_gzurl.data
+                GZ_PATH = ib_buildpath+str(form.ib_buildid.data)+'/gz/'+os.path.basename(form.ib_gzurl.data)
 
-    return render_template('ib_buildimage.html',title='Build Image',form=form)
+                executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+                try:
+                    loop.run_until_complete(download(executor, DOWNLOAD_URL, GZ_PATH))
+                finally:
+                    loop.close()
+
+                #Extract GZ file
+                gunzip_cmd = "gunzip "+GZ_PATH
+                proc = subprocess.Popen(gunzip_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o = proc.communicate()
+
+                #Mounting GZ Image
+                gz_mount_cmd0 = "losetup -f"
+                proc = subprocess.Popen(gz_mount_cmd0,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                e,o = proc.communicate()
+                loopdevice = e.decode('utf-8').rstrip('\n')
+
+                gz_mount_cmd1 = "losetup "+loopdevice+' '+ib_buildpath+str(form.ib_buildid.data)+'/gz/'+os.path.basename(form.ib_gzurl.data)[:-3]
+                proc = subprocess.Popen(gz_mount_cmd1,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o = proc.communicate()
+                if proc.returncode !=0:
+                    flash(f'Error: {gz_mount_cmd1}','danger')
+                else:
+                    gz_mount_cmd2 = "kpartx -av "+loopdevice
+                    proc = subprocess.Popen(gz_mount_cmd2,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                    o = proc.communicate()
+                    if proc.returncode !=0:
+                        flash(f'Error : {gz_mount_cmd2}','danger')
+                    else:
+                        gz_mount_cmd3 = "vgchange -ay lvm-vxl"
+                        proc = subprocess.Popen(gz_mount_cmd3,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                        e,o = proc.communicate()
+
+                        gz_mount_cmd4 = "vgscan --mknodes"
+                        proc = subprocess.Popen(gz_mount_cmd4,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                        e,o = proc.communicate()
+
+                        gz_mount_cmd5 = "mount /dev/lvm-vxl/sda2 "+ib_buildpath+str(form.ib_buildid.data)+'/gz_mount/'
+                        proc = subprocess.Popen(gz_mount_cmd5,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                        e,o = proc.communicate()
+                        if proc.returncode !=0:
+                            flash(f'Error : {gz_mount_cmd5}','danger')
+                        else:
+                            print(f'Success : {gz_mount_cmd5}')
+                            
+                            #Start Copying Files
+                            #Create SoftLinks
+
+                            #client.connect(str(form.ib_rmtcip.data),username='root',timeout=3)
+                            #stdin, stdout, stderr = client.exec_command("cd /root ; ln -s /sda1/boot boot; ln -s /sda1/data/core core; ln -s /sda1/data/basic basic; ln -s /sda1/data/apps apps")
+                            #stdin, stdout, stderr = client.exec_command("cd /root ; python -m SimpleHTTPServer")
+
+                            #Boot
+                            #Remove Boot contents from GZ
+                            #print("Info : Removeing Boot Contents")
+                            #rm_boot_cmd = "rm -rf "+ib_buildpath+str(form.ib_buildid.data)+'/gz_mount/boot'
+                            #proc = subprocess.Popen(rm_boot_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                            #o,e = proc.communicate()
+                            #print(e)
+                            #print(f'Success : Remove Boot Contents from GZ')
+                            #Wget Boot contents to GZ
+                            #print("Info : Downloading Boot Contents")
+                            #client.connect(str(form.ib_rmtcip.data),username='root',timeout=3)
+                            #wget_boot_cmd = "wget -P "+ib_buildpath+str(form.ib_buildid.data)+"/gz_mount/ -r –level=0 -E –ignore-length -x -k -p -erobots=off -np -nH --reject='index.html*' -N http://"+str(form.ib_rmtcip.data)+":8000/boot/"
+                            #proc = subprocess.Popen(wget_boot_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                            #o,e = proc.communicate()
+                            #print(e)
+                            #print(f'Success : Downloaded /sda1/boot contents')
+                            #stdin, stdout, stderr = client.exec_command("killall python")
+
+                            #Core
+                            #Remove Core contents from GZ
+                            #print("Info : Removeing Core contents")
+                            #rm_core_cmd = "rm -rf "+ib_buildpath+str(form.ib_buildid.data)+'/gz_mount/data/core'
+                            #proc = subprocess.Popen(rm_core_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                            #o,e = proc.communicate()
+                            #print(e)
+                            ##Wget Core contents to GZ
+                            #print("Info : Downloading Core Contents")
+                            #client.connect(str(form.ib_rmtcip.data),username='root',timeout=3)
+                            #wget_core_cmd = "wget -P "+ib_buildpath+str(form.ib_buildid.data)+"/gz_mount/data/ -r –level=0 -E –ignore-length -x -k -p -erobots=off -np -nH --reject='index.html*' -N http://"+str(form.ib_rmtcip.data)+":8000/core/"
+                            #proc = subprocess.Popen(wget_core_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                            #o,e = proc.communicate()
+                            #print(e)
+                            #print(f'Success : Downloaded /sda1/data/core contents')
+                            #stdin, stdout, stderr = client.exec_command("killall python")
+                                    
+                            #Basic
+                            #Remove Basic contents from GZ
+                            #print("Info : Removeing Basic Contents")
+                            #rm_basic_cmd = "rm -rf "+ib_buildpath+str(form.ib_buildid.data)+'/gz_mount/data/basic'
+                            #proc = subprocess.Popen(rm_basic_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                            #o,e = proc.communicate()
+                            #print(e)
+                            #Wget Basic contents to GZ
+                            #print("Info : Downloading Basic Contents")
+                            #client.connect(str(form.ib_rmtcip.data),username='root',timeout=3)
+                            #stdin, stdout, stderr = client.exec_command("cd /sda1/data/basic/ ; python -m SimpleHTTPServer")
+                            #wget_basic_cmd = "wget -P "+ib_buildpath+str(form.ib_buildid.data)+"/gz_mount/data/ -r –level=0 -E –ignore-length -x -k -p -erobots=off -np -nH --reject='index.html*' -N http://"+str(form.ib_rmtcip.data)+":8000/basic/"
+                            #proc = subprocess.Popen(wget_basic_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                            #o,e = proc.communicate()
+                            #print(e)
+                            #print(f'Success : Downloaded /sda1/data/basic contents')
+                            #stdin, stdout, stderr = client.exec_command("killall python")
+
+                            #Apps
+                            #Remove Apps contents from GZ
+                            #print("Info : Removeing Apps Contents")
+                            #rm_apps_cmd = "rm -rf "+ib_buildpath+str(form.ib_buildid.data)+'/gz_mount/data/apps'
+                            #proc = subprocess.Popen(rm_apps_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                            #o,e = proc.communicate()
+                            #print(e)
+                            #Wget Apps contents to GZ
+                            #print("Info : Downloading Apps Contents")
+                            #client.connect(str(form.ib_rmtcip.data),username='root',timeout=3)
+                            #stdin, stdout, stderr = client.exec_command("cd /sda1/data/apps/ ; python -m SimpleHTTPServer")
+                            #wget_apps_cmd = "wget -P "+ib_buildpath+str(form.ib_buildid.data)+"/gz_mount/data/ -r –level=0 -E –ignore-length -x -k -p -erobots=off -np -nH --reject='index.html*' -N http://"+str(form.ib_rmtcip.data)+":8000/apps"
+                            #proc = subprocess.Popen(wget_apps_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                            #o,e = proc.communicate()
+                            #print(e)
+                            #print(f'Success : Downloaded /sda1/data/apps contents')
+                            #stdin, stdout, stderr = client.exec_command("killall python")
+
+                            #Chmod All the Folders in GZ
+                            perm_cmd1 = "chmod -R 755 "+ib_buildpath+str(form.ib_buildid.data)+"/gz_mount/boot"
+                            perm_cmd2 = "chmod -R 755 "+ib_buildpath+str(form.ib_buildid.data)+"/gz_mount/data/*"
+                                    
+                            #Create GZ File again
+                            create_gz_cmd1 = "cd "+ib_buildpath+str(form.ib_buildid.data)
+                            create_gz_cmd2 = "umount "+ib_buildpath+str(form.ib_buildid.data)+"/gz_mount"
+
+                            #Create Alpine CDF
+                            create_cdf_cmd1 = "partclone.vfat -c -s /dev/mapper/"+loopdevice.lstrip('/dev/')+"p1"+" -o "+ib_buildpath+str(form.ib_buildid.data)+"/alpine/"+form.ib_name.data.replace(' ','_')+"_part1.CDF"+" "+"-L "+ib_buildpath+str(form.ib_buildid.data)+"/alpine/CDF1.log"
+                            create_cdf_cmd2 = "partclone.ext4 -c -s /dev/mapper/lvm-* -o "+ib_buildpath+str(form.ib_buildid.data)+"/alpine/"+form.ib_name.data.replace(' ','_')+"_part2.CDF "+" "+"-L "+ib_buildpath+str(form.ib_buildid.data)+"/alpine/CDF2.log"                              
+                            create_cdf_cmd3 = "partclone.ext3 -c -s /dev/mapper/"+loopdevice.lstrip('/dev/')+"p3 -o "+ib_buildpath+str(form.ib_buildid.data)+"/alpine/"+form.ib_name.data.replace(' ','_')+"_part3.CDF "+" "+"-L "+ib_buildpath+str(form.ib_buildid.data)+"/alpine/CDF3.log"
+    
+                            #Create GZ File Continue
+                            create_gz_cmd3 = "vgchange -an lvm-vxl"
+                            create_gz_cmd4 = "losetup -d "+loopdevice                                
+                            create_gz_cmd5 = "kpartx -dv "+loopdevice
+                            create_gz_cmd6 = "gzip "+ib_buildpath+str(form.ib_buildid.data)+"/gz/"+os.path.basename(form.ib_gzurl.data)[:-3]
+                            create_gz_cmd7 = "mv "+ib_buildpath+str(form.ib_buildid.data)+"/gz/"+os.path.basename(form.ib_gzurl.data)+" "+ib_buildpath+str(form.ib_buildid.data)+"/gz/"+form.ib_name.data.replace(' ','_')+".gz"
+                                    
+                            cmd_list = [perm_cmd1,perm_cmd2,create_gz_cmd1,
+                            create_gz_cmd2,create_cdf_cmd1,create_cdf_cmd2,
+                            create_cdf_cmd3,create_gz_cmd3,create_gz_cmd4,
+                            create_gz_cmd5,create_gz_cmd6,create_gz_cmd7]
+
+                            for cmdi in range(len(cmd_list)):
+                                proc = subprocess.Popen(cmd_list[cmdi],shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                                o,e = proc.communicate()
+                                print (f"Command Executed => {cmd_list[cmdi]}")
+                                print(f"Exit Code => {proc.returncode}")
+        
+                            #Writing MD5SUM
+                            md5sum_gz_cmd = "md5sum "+ib_buildpath+str(form.ib_buildid.data)+"/gz/*.gz"
+                            proc = subprocess.Popen(md5sum_gz_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                            o,e = proc.communicate()
+
+                            with open(ib_buildpath+str(form.ib_buildid.data)+"/gz/MD5SUM","w") as f:
+                                f.write(o.decode('utf-8').split(' ')[0])
+                                f.write("\n")
+
+                            gz_md5sum = o.decode('utf-8').split(' ')[0]
+
+                            md5sum_cdf_cmd = "md5sum "+ib_buildpath+str(form.ib_buildid.data)+"/alpine/*.CDF"
+                            proc = subprocess.Popen(md5sum_cdf_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                            o,e = proc.communicate()
+
+                            cdf_md5sum = []
+
+                            for i in range(len(o.decode('utf-8').split('\n'))):
+                                with open(ib_buildpath+str(form.ib_buildid.data)+"/alpine/MD5SUM","a") as f:
+                                    print(o.decode('utf-8').split('\n')[i])
+                                    f.write(o.decode('utf-8').split('\n')[i])
+                                    f.write("\n")
+                                    cdf_md5sum.append(o.decode('utf-8').split('\n')[i])
+                                    
+                            #Update DataBase
+                            print('Info : Updating DataBase')
+                            update_database = IB(ib_buildid=form.ib_buildid.data,ib_name=form.ib_name.data.replace(' ','_'),ib_description=form.ib_description.data,ib_gzurl="http://"+ib_buildpath+str(form.ib_buildid.data),ib_author=current_user,gz_md5sum=gz_md5sum)
+                            db.session.add(update_database)
+                            db.session.commit()
+                            print('Success: DataBase Updated')
+                                
+                            #Finish
+                            Path(ib_buildpath+str(form.ib_buildid.data)+"/"+"finish.true").touch()
+                                
+                            #Return to Home
+                            flash(f'Image Build Successfull','success')
+                            return redirect(url_for('ibhome'))
+            else:
+                flash(f'Invalid URL : {form.ib_gzurl.data}','danger')
+        except Exception as ee:
+            flash(f'Invalid URL : {form.ib_gzurl.data}','danger')
+
+    return render_template('ib_buildimage.html',title='Build Image',form=form,ib_buildid=ib_buildid)
+
+#Remove Image
+@app.route('/ib_home/remove/<int:ib_id>')
+@login_required
+def delete_ib(ib_id):
+    
+    ib_info = IB.query.get_or_404(ib_id)
+    
+    if ib_info.ib_author != current_user:
+        abort(403)
+
+    db.session.delete(ib_info)
+    db.session.commit()
+
+    cmd = "rm -Rf /var/www/html/Images/"+str(ib_info.ib_buildid)
+    proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    o,e = proc.communicate()
+    flash('Image Build information deleted successfully','success')
+    return redirect(url_for('ibhome'))
+
+#Cancel Image Build
+@app.route('/ib_home/cancel_build')
+@login_required
+def cancel_build():
+    if not len(os.listdir('/var/www/html/Images/')) == 0:
+        for f in os.listdir('/var/www/html/Images/'):
+            file = pathlib.Path('/var/www/html/Images/'+f+'/finish.true')
+            if not file.exists():
+                cmd = "rm -Rf /var/www/html/Images/"+str(f)
+                proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                o,e = proc.communicate()
+
+    flash(f'Your Image Build is canceled','info')
+    return redirect(url_for('ibhome'))            
 
 #User Login Page
 @app.route('/login',methods=['GET','POST'])

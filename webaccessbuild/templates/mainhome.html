@@ -6,31 +6,46 @@
     <p class="lead">One web access build is for building Packages,Firmware updates and Images.</p>
   </div>
 </div>
-<div class="card-deck pt-3">
-	<div class="card text-white bg-secondary mb-3" >
-  		<div class="card-header text-center">Package Builder</div>
-  		<div class="card-body">
-    		<p class="card-text">Package builder will helps to build the various packages for 32-Bit and 64-Bit OS Architecture.It also gives the provision for building the patch for the same package.</p>
-  		</div>
+<div class="row row-cols-1 row-cols-md-3">
+  <div class="col mb-4">
+    <div class="card text-white bg-secondary h-100">
+      <div class="card-header text-center">Package Builder</div>
+      <div class="card-body">
+        <p class="card-text">Package builder will helps to build the various packages for 32-Bit and 64-Bit OS Architecture.It also gives the provision for building the patch for the same package.</p>
+      </div>
       <span class="badge badge-info rounded-0">Total Packages Created : {{pb_count}}</span>
-  		<div class="card-footer bg-secondary text-center "><a href="{{url_for('pb_home')}}" class="btn btn-secondary">Home</a></div>
-  	</div>	
-  	<div class="card text-white bg-secondary mb-3" >
-  		<div class="card-header text-center">Firmware Update Builder</div>
-  		<div class="card-body">
-    		<p class="card-text">Firmware Update builder will helps to build the update patches for 32-Bit and 64-Bit OS Architecture.</p>
-  		</div>
+      <div class="card-footer bg-secondary text-center "><a href="{{url_for('pb_home')}}" class="btn btn-secondary">Home</a></div>
+    </div>
+  </div>
+  <div class="col mb-4">
+    <div class="card text-white bg-secondary h-100">
+      <div class="card-header text-center">Firmware Update Builder</div>
+      <div class="card-body">
+        <p class="card-text">Firmware Update builder will helps to build the update patches for 32-Bit and 64-Bit OS Architecture.</p>
+      </div>
       <span class="badge badge-info rounded-0">Total Firmware Updates Created : {{fb_count}}</span>
-  		<div class="card-footer bg-secondary text-center "><a href="{{url_for('fb_home')}}" class="btn btn-secondary">Home</a></div>
-	</div>
-	<div class="card text-white bg-secondary mb-3" >
-  		<div class="card-header text-center">Image Builder</div>
-  		<div class="card-body">
-    		<p class="card-text">Image Builder builds the GZ Image , Alpine CDF and ISO file.</p>
-  		</div>
-      <span class="badge badge-info rounded-0">Total Images Created : 0</span>
-  		<div class="card-footer bg-secondary text-center "><a href="{{url_for('ibhome')}}" class="btn btn-secondary">Home</a></div>
-	</div>
-
-</div>	
+      <div class="card-footer bg-secondary text-center "><a href="{{url_for('fb_home')}}" class="btn btn-secondary">Home</a></div>
+    </div>
+  </div>
+  <div class="col mb-4">
+    <div class="card text-white bg-secondary h-100">
+      <div class="card-header text-center">Image Builder</div>
+      <div class="card-body">
+        <p class="card-text">Image Builder builds the GZ Image , Alpine CDF and ISO file.</p>
+      </div>
+      <span class="badge badge-info rounded-0">Total Images Created : {{ib_count}}</span>
+      <div class="card-footer bg-secondary text-center "><a href="{{url_for('ibhome')}}" class="btn btn-secondary">Home</a></div>
+    </div>
+  </div>
+  <div class="col mb-4">
+    <div class="card text-white bg-secondary h-100">
+      <div class="card-header text-center">Registered Remote Nodes</div>
+      <div class="card-body">
+        <p class="card-text">With SSH protcol Register and Access remote nodes</p>
+      </div>
+      <span class="badge badge-info rounded-0">Total Nodes : {{rn_count}}</span>
+      <div class="card-footer bg-secondary text-center "><a href="{{url_for('reghostnode')}}" class="btn btn-secondary">Home</a></div>
+    </div>
+  </div>
+</div>
 {% endblock content%}

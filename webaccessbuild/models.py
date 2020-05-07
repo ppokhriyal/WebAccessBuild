@@ -79,7 +79,9 @@ class IB(db.Model):
 	date_posted = db.Column(db.DateTime(),nullable=False,default=datetime.now)
 	ib_description = db.Column(db.Text,nullable=False)
 	ib_gzurl = db.Column(db.String(100),nullable=False)
+	gz_md5sum = db.Column(db.String(40),nullable=False)
+	
 	user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 	def __repr__(self):
-		return f"IB('{self.ib_buildid}','{self.ib_name}','{self.ib_description}','{self.ib_gzurl}')"
+		return f"IB('{self.ib_buildid}','{self.ib_name}','{self.ib_description}','{self.ib_gzurl}','{self.gz_md5sum}'"

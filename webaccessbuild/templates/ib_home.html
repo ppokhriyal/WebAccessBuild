@@ -7,5 +7,28 @@
     		<a href="{{url_for('ib_buildimg')}}" class="btn btn-success btn-sm ml-auto">Build New Image</a>
   		</ol>
 	</nav>
-	
+	{% if ib_count == 0 %}
+		<p>Empty Image Build History !!</p>
+	{% else %}
+		{% for i in ib.items %}
+			<div class="media my-3 p-3 bg-light rounded shadow-sm ">
+				<img src="{{url_for('static',filename='images/ib.png')}}" width="32" height="32" class="mr-3" alt="...">
+				<div class="media-body">
+					<h5 class="mt-0">{{i.ib_name}}</h5>
+					<p class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray">
+						<strong class="" lass="d-block text-gray-dark">Build by {{i.ib_author.username}} | Dated : {{ i.date_posted.strftime('%d-%m-%Y')}} | Time : {{i.date_posted.strftime('%I:%M %p')}}</strong>
+					</p>
+					<p class="media-body pt-1 pb-2 small lh-125 border-bottom border-gray ">{{i.ib_description | safe}}</p>
+					<small>
+						<i class="fas fa-cloud-download-alt"></i> Download all the image contents from <a href="{{i.ib_gzurl}}">"Here"</a><br>
+						<i class="fas fa-check-circle"></i> Md5sum of {{i.ib_name}}.gz is <mark>{{i.gz_md5sum}}</mark><br>
+					</small>
+					<div class="border-top pt-1 mb-2"></div>
+					{% if i.ib_author == current_user %}
+						<a class="badge badge-danger float-right pb-1" href="{{url_for('delete_ib',ib_id=i.id)}}" role="button">Remove</a>
+					{% endif %}
+				</div>
+			</div>
+		{% endfor %}
+	{% endif %}
 {% endblock content %}

@@ -3,9 +3,7 @@
 	<nav aria-label="breadcrumb">
   		<ol class="breadcrumb">
     		<li class="breadcrumb-item"><a href="{{url_for('mainhome')}}">Home</a></li>
-    		<li class="breadcrumb-item active"><a href="{{url_for('pb_home')}}">Package Builder</a></li>
-    		<li class="breadcrumb-item active"><a href="{{url_for('pb_newbuild')}}">Build New Package</a></li>
-    		<li class="breadcrumb-item active"><a href="{{url_for('pb_reghostnode')}}">Registered Host Nodes</a></li>
+    		<li class="breadcrumb-item active"><a href="{{url_for('reghostnode')}}">Registered Host Nodes</a></li>
     		<li class="breadcrumb-item active" aria-current="page">Add Host Node</li>
     		
   		</ol>
@@ -34,7 +32,7 @@
 		</div>
 		<div class="form-group">
 			{{form.pb_submit(class="btn btn-sm btn-primary")}}
-			<a class="btn btn-warning btn-sm" href="{{url_for('pb_reghostnode')}}">Cancel</a>
+			<a class="btn btn-warning btn-sm" href="{{url_for('reghostnode')}}">Cancel</a>
 		</div>
 	</form>
 {% endblock content %}
