@@ -79,7 +79,6 @@ def addhostnode():
 
 #PB Remote Host Node
 @app.route('/reghostnodes')
-@login_required
 def reghostnode():
     page = request.args.get('page',1,type=int)
     regs_host_count = db.session.query(RegisteredNode).count()
@@ -393,8 +392,9 @@ def pb_delete(pb_id):
 #FB Home
 @app.route('/fb_home',methods=['GET','POST'])
 def fb_home():
+
     page = request.args.get('page',1,type=int)
-    fb = FB.query.filter_by(fb_author=current_user).order_by(FB.fb_date_posted.desc()).paginate(page=page,per_page=4)
+    fb = FB.query.order_by(FB.fb_date_posted.desc()).paginate(page=page,per_page=4)
     fb_count = len(db.session.query(FB).all())
 
     return render_template('fb_home.html',title='Firmware Update Patch',fb=fb,fb_count=fb_count)
@@ -939,6 +939,7 @@ async def download(executor, url, output, chunk_size=1000000):
             os.remove(chunk_path)   
 #Build New Image
 @app.route('/buildimage',methods=['POST','GET'])
+@login_required
 def ib_buildimg():
 
     form = IBBuildForm()
